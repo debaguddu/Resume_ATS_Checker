@@ -126,7 +126,8 @@ Resume ATS Checker/
 │       │   ├── vectorstore.py        # Semantic chunking, embeddings & cosine similarity
 │       │   ├── chains.py             # LangChain structured ATS scoring chain
 │       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
-│       │   └── cover_letter_chain.py # Persuasive tailored cover letter generator
+│       │   ├── cover_letter_chain.py # Persuasive tailored cover letter generator
+│       │   └── builder_chain.py      # Structured resume decomposition & suggestion engine
 │       └── ui/
 │           ├── __init__.py
 │           ├── styles.py             # Glassmorphic CSS tokens, typography & color palettes
@@ -498,7 +499,21 @@ erDiagram
 
 ---
 
-### 9.6 PostgreSQL Database & Storage Layer: `database/`
+### 9.6 Interactive Resume Builder Chain: `rag/builder_chain.py`
+- **File**: [`src/resume_ats_checker/rag/builder_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/builder_chain.py)
+- **Purpose**: Powers structured resume decomposition, section extraction, and tailored suggestion generation for the interactive accordion Resume Builder.
+- **Pydantic Schemas**:
+  - `WorkExperienceEntry`: Company name, role title, location, employment type, date range, and a list of metric-driven accomplishment bullets.
+  - `EducationEntry`: Academic institution, degree, location, and dates.
+  - `ProjectEntry`: Project title, tech stack, one-line objective, and key deliverable bullets.
+  - `StructuredResume`: Complete resume representation encompassing personal contact info, target headline, professional summary, work experience items, education, categorized technical skills, certifications, awards, leadership, and publications.
+- **Key Functions**:
+  - `decompose_and_tailor_resume(resume_text, job_description) -> StructuredResume`: Employs `ChatOpenAI` with structured output parsing to decompose raw resume text into structured sections while weaving target JD keywords into experience bullets and summaries.
+  - `generate_default_sample_resume() -> StructuredResume`: Returns a production-ready, pre-populated Data Engineering Lead profile (Capgemini example) for instant demonstration and exploratory testing.
+
+---
+
+### 9.7 PostgreSQL Database & Storage Layer: `database/`
 - **Files**:
   - [`src/resume_ats_checker/database/connection.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/connection.py)
   - [`src/resume_ats_checker/database/repository.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/repository.py)
@@ -513,7 +528,7 @@ erDiagram
 
 ---
 
-### 9.7 Application Configuration: `config.py`
+### 9.8 Application Configuration: `config.py`
 - **File**: [`src/resume_ats_checker/config.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/config.py)
 - **Purpose**: Type-safe settings management using `pydantic-settings`.
 - **Fields**:
@@ -523,7 +538,7 @@ erDiagram
 
 ---
 
-### 9.8 UI Design System & Components: `ui/`
+### 9.9 UI Design System & Components: `ui/`
 - **Files**:
   - [`src/resume_ats_checker/ui/styles.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/ui/styles.py)
   - [`src/resume_ats_checker/ui/components.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/ui/components.py)
@@ -539,19 +554,29 @@ erDiagram
 
 ---
 
-### 9.9 Streamlit Application Pages
+### 9.10 Streamlit Application Pages
 - **Main Dashboard**: [`app.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/app.py)
   - Executive overview, quick-start guide, live sidebar connection indicators (PostgreSQL and OpenAI), and recent evaluation logs.
 - **ATS Checker Workspace**: [`pages/1_🎯_ATS_Checker.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/1_%F0%9F%8E%AF_ATS_Checker.py)
   - Two-column input: File uploader (PDF/DOCX/PPTX) + Job Description textarea.
   - Execution button triggering RAG embedding, similarity ranking, LLM structured scoring, and database persistence.
+  - One-click cross-navigation button (`🛠️ Customize in Interactive Resume Builder`) transferring parsed resume text and JD directly into the builder session.
   - Tabbed results display:
     1. *Diagnostics & RAG Evidence* (Keyword badges, strengths, weaknesses, similarity breakdown).
     2. *Suggestions Box* (Google X-Y-Z recommendation callouts).
-    3. *Suggested Complete Resume* (Rewrite generator, focus strategy selector, regenerate trigger, Markdown download).
+    3. *Suggested Complete Resume* (Rewrite generator, focus strategy selector, regenerate trigger, Markdown download, builder handoff).
     4. *Tailored Cover Letter* (Cover letter generator and Markdown download).
-- **Template & Export Studio (Future Expansion)**: [`pages/2_📝_Resume_Builder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/2_%F0%9F%93%9D_Resume_Builder.py)
-  - Scaffolded page with template cards (*Modern Tech*, *Executive Suite*, *Minimalist Ivory*), profile data fields, candidate photo placeholder, and export triggers for PDF and DOCX.
+- **Interactive Structured Resume Builder**: [`pages/2_📝_Resume_Builder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/2_%F0%9F%93%9D_Resume_Builder.py)
+  - Full-featured section accordion studio with granular checkboxes matching enterprise builders:
+    1. `> Contact Information` (Full Name, Title, Email, Phone, Location, Links).
+    2. `> Target Title` (Target role headline).
+    3. `> Professional Summary` (Selective checkbox and inline editor).
+    4. `> Work Experience` (Company, Role, Location, Dates, and individual checkboxes for every metric-driven bullet point).
+    5. `> Education` (Institution, Degree, Dates, Location with checkboxes).
+    6. `> Skills & Interests` (Categorized skill sets).
+    7. `> Certifications`, `> Projects`, `> Awards`, `> Leadership`, `> Publications`.
+  - Supports both automatic context handoff from the ATS Checker and standalone reference resume upload / JD pasting.
+  - Real-time live compiled resume preview showing only checked accomplishments with Markdown (`.md`) and Plain Text (`.txt`) download buttons.
 
 ---
 

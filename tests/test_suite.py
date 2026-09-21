@@ -123,9 +123,26 @@ def test_database_integration():
         print("  ⚠️ PostgreSQL not reachable with current credentials (skipping live CRUD).")
 
 
+from resume_ats_checker.rag.builder_chain import generate_default_sample_resume, StructuredResume
+
+
+def test_builder_schema():
+    print("Testing Structured Resume Schema...")
+    sample = generate_default_sample_resume()
+    assert isinstance(sample, StructuredResume)
+    assert sample.full_name == "Debaranjan"
+    assert len(sample.work_experience) >= 1
+    assert sample.work_experience[0].company == "Capgemini"
+    assert len(sample.work_experience[0].bullets) >= 5
+    assert len(sample.education) >= 1
+    print("  ✓ Resume Builder schema and default generation verified.")
+
+
 if __name__ == "__main__":
     test_pdf_parsing()
     test_docx_parsing()
     test_pptx_parsing()
     test_database_integration()
+    test_builder_schema()
     print("\n🎉 ALL TESTS PASSED SUCCESSFULLY!")
+

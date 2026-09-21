@@ -60,7 +60,8 @@ Resume ATS Checker/
 │       │   ├── vectorstore.py        # Chunking, embeddings & RAG similarity retrieval
 │       │   ├── chains.py             # LangChain structured ATS evaluation
 │       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
-│       │   └── cover_letter_chain.py # Persuasive tailored cover letter generator
+│       │   ├── cover_letter_chain.py # Persuasive tailored cover letter generator
+│       │   └── builder_chain.py      # Structured resume decomposition & suggestion engine
 │       └── ui/
 │           ├── __init__.py
 │           ├── styles.py             # Glassmorphic CSS tokens, typography, and dark palette
@@ -95,6 +96,11 @@ flowchart TD
     
     UI -->|Trigger Cover Letter| Cover[rag/cover_letter_chain.py]
     Cover -->|Tailored Letter| UI
+
+    UI -->|Handoff Resume & JD| Builder[pages/2_📝_Resume_Builder.py]
+    Builder -->|AI Section Suggestions| Decomp[rag/builder_chain.py: decompose_and_tailor_resume]
+    Decomp -->|Structured Sections & Bullets| Builder
+    Builder -->|Selective Checkbox Toggles| LiveExport[Live Compiled Resume & MD/TXT Export]
 ```
 
 ---
@@ -127,7 +133,20 @@ flowchart TD
 - **Inputs**: Resume text, Job Description, candidate name.
 - **Outputs**: Persuasive Markdown cover letter.
 
-### F. Database Persistence (`src/resume_ats_checker/database/`)
+### F. Structured Resume Builder Engine (`src/resume_ats_checker/rag/builder_chain.py`)
+- **Schemas**: `WorkExperienceEntry`, `EducationEntry`, `ProjectEntry`, `StructuredResume`.
+- **Functions**: `decompose_and_tailor_resume()`, `generate_default_sample_resume()`.
+- **Inputs**: Raw resume text, target Job Description.
+- **Outputs**: Strongly typed `StructuredResume` with tailored bullets, summary, and categorized skills.
+
+### G. Interactive Accordion Resume Builder (`pages/2_📝_Resume_Builder.py`)
+- **Features**: Accordion section checklists (`Contact Information`, `Target Title`, `Professional Summary`, `Work Experience`, `Education`, `Skills & Interests`, `Certifications`, `Projects`, `Awards`, `Leadership`, `Publications`).
+- **Functionality**:
+  - Context handoff from ATS Checker or standalone upload/paste.
+  - Granular checkboxes next to each bullet point, role, and credential.
+  - Live compiled Markdown and plain text resume preview with instant export downloads.
+
+### H. Database Persistence (`src/resume_ats_checker/database/`)
 - **Modules**: `connection.py` (engine & table DDL), `repository.py` (CRUD helpers).
 - **Tables**: `evaluations`, `resume_embeddings`.
 
@@ -138,7 +157,8 @@ flowchart TD
 1. **Automated Tests**:
    - Verified multi-format document parser using synthesized PDF, DOCX, and PPTX byte streams.
    - Verified PostgreSQL connection and table operations on port 5432.
+   - Verified `StructuredResume` schema and default sample data generation in `tests/test_suite.py`.
 2. **Syntax Validation**:
    - Verified zero compilation/syntax errors across all Python files.
 3. **Execution**:
-   - Ran live Streamlit server on `http://localhost:8501` verifying healthy HTTP 200 response.
+   - Ran live Streamlit server on `http://localhost:8501` verifying healthy HTTP 200 response and multi-page routing.

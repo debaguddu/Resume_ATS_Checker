@@ -200,6 +200,18 @@ if eval_res is not None:
         unsafe_allow_html=True,
     )
 
+    # Cross-Navigation to Resume Builder
+    col_build_btn, col_build_info = st.columns([2, 3])
+    with col_build_btn:
+        if st.button("🛠️ Customize in Interactive Resume Builder", type="primary", use_container_width=True):
+            st.session_state["builder_resume_text"] = st.session_state.get("parsed_resume_text", "")
+            st.session_state["builder_jd_text"] = st.session_state.get("cached_jd", "")
+            st.session_state["from_ats_checker"] = True
+            st.session_state["builder_auto_trigger"] = True
+            st.switch_page("pages/2_📝_Resume_Builder.py")
+    with col_build_info:
+        st.caption("✨ Takes your uploaded resume and JD to customize sections, toggle accomplishment checkboxes, and edit bullet points.")
+
     # 2. Detailed Tabs for Results
     tab_diagnostics, tab_suggestions, tab_resume, tab_cover = st.tabs([
         "🔍 Diagnostics & RAG Evidence",
@@ -284,12 +296,22 @@ if eval_res is not None:
                 f'<div class="document-preview-box">{current_suggested}</div>',
                 unsafe_allow_html=True,
             )
-            st.download_button(
-                label="⬇️ Download Rewritten Resume (.md)",
-                data=current_suggested,
-                file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.md",
-                mime="text/markdown",
-            )
+            c_down1, c_down2 = st.columns([1, 1])
+            with c_down1:
+                st.download_button(
+                    label="⬇️ Download Rewritten Resume (.md)",
+                    data=current_suggested,
+                    file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+            with c_down2:
+                if st.button("🛠️ Open in Interactive Section Builder", use_container_width=True):
+                    st.session_state["builder_resume_text"] = st.session_state.get("parsed_resume_text", "")
+                    st.session_state["builder_jd_text"] = st.session_state.get("cached_jd", "")
+                    st.session_state["from_ats_checker"] = True
+                    st.session_state["builder_auto_trigger"] = True
+                    st.switch_page("pages/2_📝_Resume_Builder.py")
         else:
             st.info("Click 'Create Suggested Resume' above to generate your customized resume.")
 
