@@ -7,49 +7,248 @@ An enterprise-grade, modular, **RAG-powered Resume ATS (Applicant Tracking Syste
 ## 📌 Repository Rules & Design Policy
 
 > [!IMPORTANT]
-> **Mandatory Rule**: Any changes, additions, or modifications to the system design, architecture, database schema, RAG pipeline, or UI workflows **MUST immediately be updated in this `README.md` file**.  
-> This ensures that documentation, module descriptions, and flow diagrams remain an accurate reflection of the codebase.
+> **Mandatory Synchronization Rule**: Any changes, additions, or modifications to the system design, architecture, database schema, RAG pipeline, or UI workflows **MUST immediately be updated in this `README.md` file**.  
+> Detailed implementation notes are also maintained in [**`IMPLEMENTATION_PLAN.md`**](IMPLEMENTATION_PLAN.md).
 
 ---
 
 ## 📖 Table of Contents
-0. [Implementation Plan Specification](IMPLEMENTATION_PLAN.md)
-1. [System Architecture & Design Philosophy](#-system-architecture--design-philosophy)
-2. [End-to-End Flow Diagrams](#-end-to-end-flow-diagrams)
-   - [System Architecture & Data Flow](#1-system-architecture--data-flow)
-   - [User Interaction Sequence Diagram](#2-user-interaction-sequence-diagram)
-   - [Database Entity-Relationship (ER) Diagram](#3-database-entity-relationship-er-diagram)
-3. [Comprehensive Module Descriptions](#-comprehensive-module-descriptions)
-   - [Document Parsing Layer](#1-document-parsing-layer-parsersdocument_parserpy)
-   - [RAG & Vector Retrieval Engine](#2-rag--vector-retrieval-engine-ragvectorstorepy)
-   - [LangChain ATS Evaluation Chain](#3-langchain-ats-evaluation-chain-ragchainspy)
-   - [Resume Rewrite & Regeneration Engine](#4-resume-rewrite--regeneration-engine-ragrewrite_chainpy)
-   - [Cover Letter Generator](#5-cover-letter-generator-ragcover_letter_chainpy)
-   - [PostgreSQL Database & Storage Layer](#6-postgresql-database--storage-layer)
-   - [Application Configuration](#7-application-configuration-configpy)
-   - [UI Design System & Components](#8-ui-design-system--components)
-   - [Streamlit Application Pages](#9-streamlit-application-pages)
-4. [Getting Started & Installation](#-getting-started--installation)
-5. [Environment Variables Reference](#-environment-variables-reference)
-6. [Testing & Verification](#-testing--verification)
-7. [Future Expansion Roadmap](#-future-expansion-roadmap)
+1. [🎯 Project Purpose & Problem Statement](#1--project-purpose--problem-statement)
+2. [📋 Project Details & Metadata](#2--project-details--metadata)
+3. [🌐 System Overview](#3--system-overview)
+4. [📂 Folder Structure](#4--folder-structure)
+5. [📚 Libraries & Technologies Used](#5--libraries--technologies-used)
+6. [🗄️ Database Architecture (PostgreSQL)](#6-️database-architecture-postgresql)
+7. [🚀 How to Run (Step-by-Step Guide)](#7--how-to-run-step-by-step-guide)
+8. [🔄 End-to-End Flow Diagrams](#8--end-to-end-flow-diagrams)
+   - [System Architecture & Data Flow](#81-system-architecture--data-flow)
+   - [User Interaction Sequence Diagram](#82-user-interaction-sequence-diagram)
+   - [Database Entity-Relationship (ER) Diagram](#83-database-entity-relationship-er-diagram)
+9. [🧩 Comprehensive Module Descriptions](#9--comprehensive-module-descriptions)
+   - [Document Parsing Layer (`parsers/document_parser.py`)](#91-document-parsing-layer-parsersdocument_parserpy)
+   - [RAG & Vector Retrieval Engine (`rag/vectorstore.py`)](#92-rag--vector-retrieval-engine-ragvectorstorepy)
+   - [LangChain ATS Evaluation Chain (`rag/chains.py`)](#93-langchain-ats-evaluation-chain-ragchainspy)
+   - [Resume Rewrite & Regeneration Engine (`rag/rewrite_chain.py`)](#94-resume-rewrite--regeneration-engine-ragrewrite_chainpy)
+   - [Cover Letter Generator (`rag/cover_letter_chain.py`)](#95-cover-letter-generator-ragcover_letter_chainpy)
+   - [PostgreSQL Database & Storage Layer (`database/`)](#96-postgresql-database--storage-layer-database)
+   - [Application Configuration (`config.py`)](#97-application-configuration-configpy)
+   - [UI Design System & Components (`ui/`)](#98-ui-design-system--components-ui)
+   - [Streamlit Application Pages (`app.py`, `pages/`)](#99-streamlit-application-pages)
+10. [⚙️ Environment Variables Reference](#10-️environment-variables-reference)
+11. [🧪 Testing & Verification](#11--testing--verification)
+12. [🔮 Future Expansion Roadmap](#12--future-expansion-roadmap)
 
 ---
 
-## 🏛️ System Architecture & Design Philosophy
+## 1. 🎯 Project Purpose & Problem Statement
 
-The application is architected around the following key principles:
-1. **Separation of Concerns (Modularity)**: Distinct separation between file ingestion, RAG vector processing, LLM evaluation chains, relational persistence, and presentation UI.
-2. **Semantic RAG Grounding**: Rather than relying purely on top-level LLM parsing, the engine breaks both the resume and the job description into semantic chunks, computes vector embeddings via OpenAI (`text-embedding-3-small`), and matches individual requirements against candidate evidence.
-3. **Strict Structured Output**: All ATS diagnostics are validated via **Pydantic schemas** to ensure predictable scoring, categorized skills, and actionable feedback.
-4. **Relational & Vector Hybrid Storage**: Powered by **PostgreSQL 18** with automatic detection for the `pgvector` extension and a transparent JSONB fallback for maximum portability across local installations and cloud deployments.
-5. **Future-Ready Expansion**: Structured as a multi-page Streamlit application where subsequent features (e.g., visual template designers, photo uploaders, and PDF/DOCX exporters) plug into the existing architecture without modifying core ATS logic.
+### The Problem
+Modern hiring workflows rely heavily on automated **Applicant Tracking Systems (ATS)** like Workday, Taleo, Greenhouse, and Lever. These systems filter out over 75% of qualified applicants before a human recruiter ever sees their resume due to:
+- Missing critical technical and domain keywords present in the Job Description.
+- Format incompatibilities and unparseable layouts (e.g. multi-column text boxes, non-standard headers).
+- Failure to articulate achievements using quantified impact metrics (e.g., the Google X-Y-Z formula: *"Accomplished [X] as measured by [Y], by doing [Z]"*).
+
+### The Solution
+The **Enterprise AI Resume ATS Suite** solves this by providing job seekers and recruiters with a transparent, AI-driven audit workspace:
+- **Ground Truth Semantic Matching (RAG)**: Chunks both the candidate's resume and the target Job Description, computes vector embeddings, and performs cosine similarity retrieval to detect exact qualification alignments and glaring skill gaps.
+- **Holistic ATS Scorecard**: Breaks evaluation into 4 transparent metrics: Overall Score, Skills Match, Experience Relevance, and ATS Formatting.
+- **Actionable Diagnostic Feedback**: Highlights matched keywords in emerald green and critical missing keywords in coral red, accompanied by specific bullet improvement recommendations.
+- **Tailored Generative Reconstruction**: Instantly rewrites the entire resume to achieve a 95%+ ATS match rate while remaining honest to the candidate's background, with a **Regenerate** engine for alternative strategic angles (Keyword Maximization, Leadership, Delivery).
+- **Executive Cover Letter Composition**: Composes personalized cover letters directly connecting the candidate's past wins to the employer's pressing challenges.
 
 ---
 
-## 🔄 End-to-End Flow Diagrams
+## 2. 📋 Project Details & Metadata
 
-### 1. System Architecture & Data Flow
+| Attribute | Specification |
+| :--- | :--- |
+| **Project Name** | Resume ATS Checker (`resume-ats-checker`) |
+| **Version** | `0.1.0` |
+| **Author** | Debaranjan (`debaranjanb91@gmail.com`) |
+| **Repository** | [https://github.com/debaguddu/Resume_ATS_Checker](https://github.com/debaguddu/Resume_ATS_Checker) |
+| **Supported Python** | Python `>= 3.11` (Managed via `uv`, tested on Python `3.12.14`) |
+| **Primary Frameworks** | Streamlit, LangChain, OpenAI, SQLAlchemy, Psycopg 3 |
+| **Supported File Formats** | PDF (`.pdf`), Word (`.docx`), PowerPoint (`.pptx`), Plain Text (`.txt`, `.md`), Legacy (`.doc`, `.ppt`) |
+| **Database** | PostgreSQL 18 with `pgvector` extension and automatic `JSONB` fallback |
+
+---
+
+## 3. 🌐 System Overview
+
+The application follows a clean **modular architecture** with a strict separation of concerns:
+
+```
+[User Interface] ──> [Document Parsers] ──> [Semantic RAG Pipeline] ──> [LangChain LLM Chains] ──> [PostgreSQL Persistence]
+  (Streamlit)          (PDF/DOCX/PPTX)     (Chunking & Embeddings)      (Scoring & Rewrites)      (Audit History & Logs)
+```
+
+1. **Ingestion Layer**: Users upload their resume in PDF, DOCX, or PPTX format and paste a target job description. The parser extracts plain text and preserves paragraph and tabular structure.
+2. **Retrieval-Augmented Generation (RAG) Layer**: The resume and JD are split into semantic chunks with punctuation-aware overlaps. Vector embeddings (`text-embedding-3-small`) are generated to measure requirement-to-experience similarity.
+3. **Reasoning & Evaluation Layer**: LangChain orchestrates `gpt-4o-mini` with strict **Pydantic structured output** to calculate weighted scores, extract strengths/weaknesses, and compile keyword chips.
+4. **Generative Transformation Layer**: Generates customized full resume rewrites and tailored cover letters with multi-angle regeneration options.
+5. **Data Persistence Layer**: All audit records, scores, metadata, and generated assets are stored in PostgreSQL on port 5432.
+
+---
+
+## 4. 📂 Folder Structure
+
+```
+Resume ATS Checker/
+├── .agents/
+│   └── rules/
+│       └── design_updates.md         # Customization rule enforcing README synchronization
+├── .env                              # Local secrets & credentials (git-ignored)
+├── .env.example                      # Committed configuration template (no secrets)
+├── .gitignore                        # Python, uv, cache, and secrets exclusion rules
+├── .python-version                   # Pinned Python version (3.12)
+├── pyproject.toml                    # UV project configuration and package dependencies
+├── uv.lock                           # Pinned dependency lockfile
+├── IMPLEMENTATION_PLAN.md            # Detailed technical specification & component blueprint
+├── README.md                         # Complete project documentation, diagrams & guide
+├── AGENTS.md                         # Workspace rule for design updates
+├── app.py                            # Streamlit entrypoint & executive dashboard
+├── pages/
+│   ├── 1_🎯_ATS_Checker.py           # Core ATS Checker & RAG Analyzer workspace
+│   └── 2_📝_Resume_Builder.py        # Future expansion template & export studio
+├── src/
+│   └── resume_ats_checker/
+│       ├── __init__.py               # Package marker
+│       ├── config.py                 # Pydantic Settings & environment loader
+│       ├── database/
+│       │   ├── __init__.py
+│       │   ├── connection.py         # PostgreSQL connection pool & auto table initialization
+│       │   └── repository.py         # Evaluation history & embeddings CRUD operations
+│       ├── parsers/
+│       │   ├── __init__.py
+│       │   └── document_parser.py    # Multi-format parser (PDF, DOCX, PPTX, TXT)
+│       ├── rag/
+│       │   ├── __init__.py
+│       │   ├── vectorstore.py        # Semantic chunking, embeddings & cosine similarity
+│       │   ├── chains.py             # LangChain structured ATS scoring chain
+│       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
+│       │   └── cover_letter_chain.py # Persuasive tailored cover letter generator
+│       └── ui/
+│           ├── __init__.py
+│           ├── styles.py             # Glassmorphic CSS tokens, typography & color palettes
+│           └── components.py         # Reusable UI metric cards, chips & callouts
+└── tests/
+    └── test_suite.py                 # Automated verification test suite
+```
+
+---
+
+## 5. 📚 Libraries & Technologies Used
+
+| Library / Tool | Version | Purpose in Application |
+| :--- | :--- | :--- |
+| **Streamlit** | `>= 1.40.0` | Powers the reactive multi-page web application, interactive tabs, file uploader, and dashboards. |
+| **LangChain Core & Community** | `>= 0.3.0` | Orchestrates prompt templates, chain composition, and LLM output parsing. |
+| **LangChain OpenAI** | `>= 0.2.0` | Direct integration with OpenAI's `ChatOpenAI` and `OpenAIEmbeddings` models. |
+| **OpenAI SDK** | `>= 1.50.0` | Underlying client communicating with OpenAI GPT-4o-mini and embedding APIs. |
+| **SQLAlchemy** | `>= 2.0.0` | Database ORM and connection pooling engine for robust PostgreSQL interaction. |
+| **Psycopg 3 (`psycopg[binary]`)** | `>= 3.2.0` | High-performance PostgreSQL database driver with binary wheels for Windows. |
+| **pgvector** | `>= 0.3.0` | Vector extension support for storing and indexing embeddings directly in PostgreSQL. |
+| **pypdf** | `>= 5.0.0` | Pure-Python PDF extraction library extracting clean text from multi-page resumes. |
+| **python-docx** | `>= 1.1.0` | Microsoft Word (`.docx`) document parser extracting paragraphs, headings, and tables. |
+| **python-pptx** | `>= 1.0.0` | PowerPoint (`.pptx`) parser extracting text from slides, shapes, tables, and notes. |
+| **Pydantic & Pydantic-Settings** | `>= 2.8.0` | Type-safe schema validation for structured LLM evaluation outputs and `.env` configuration. |
+| **NumPy** | `>= 1.26.0` | Vector operations and fast cosine similarity computations. |
+| **python-dotenv** | `>= 1.0.1` | Loads local environment variables from `.env` seamlessly. |
+| **uv** | `>= 0.12.0` | Next-generation Python package manager providing ultra-fast installation and lockfile management. |
+
+---
+
+## 6. 🗄️ Database Architecture (PostgreSQL)
+
+The application uses **PostgreSQL 18** (running locally on port `5432` or via Docker/cloud).
+
+### Automatic Schema Initialization & Vector Fallback
+On launch, [`src/resume_ats_checker/database/connection.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/connection.py) connects to PostgreSQL and attempts to enable the native `vector` extension:
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+- **If `vector` is available**: Embeddings in `resume_embeddings` are stored as `vector(1536)` columns with indexing.
+- **If `vector` is not compiled**: The engine automatically falls back to `JSONB` format for embeddings. The app remains 100% functional without external dependencies or build errors on Windows.
+
+### Database Tables
+1. **`evaluations`**:
+   Stores candidate audit records, overall and breakdown scores, recruiter summaries, JSON arrays of matched/missing keywords, and generated markdown assets (rewritten resumes and cover letters).
+2. **`resume_embeddings`**:
+   Stores document chunks, chunk types (`resume` vs `job_description`), and vector embeddings linked by `evaluation_id`.
+
+---
+
+## 7. 🚀 How to Run (Step-by-Step Guide)
+
+### Step 1: Prerequisites
+- **Python 3.11 or 3.12** installed (or let `uv` download it automatically).
+- **PostgreSQL 14+** running locally on port `5432` (or in a Docker container).
+- An **OpenAI API Key** with access to `gpt-4o-mini` and `text-embedding-3-small`.
+
+### Step 2: Clone the Repository
+```bash
+git clone https://github.com/debaguddu/Resume_ATS_Checker.git
+cd "Resume ATS Checker"
+```
+
+### Step 3: Configure Environment Variables
+Copy the template to create your local `.env`:
+```bash
+cp .env.example .env
+```
+Open `.env` in your text editor and update:
+```env
+OPENAI_API_KEY=sk-your-actual-openai-api-key
+OPENAI_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=text-embedding-3-small
+
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_actual_postgres_password
+DATABASE_URL=postgresql+psycopg://postgres:your_actual_postgres_password@localhost:5432/postgres
+```
+
+### Step 4: Install Dependencies via `uv`
+Install all dependencies cleanly into a local `.venv`:
+```bash
+uv sync
+```
+
+### Step 5: Run Automated Tests
+Verify document parsers and PostgreSQL database connectivity:
+```bash
+uv run python tests/test_suite.py
+```
+Expected output:
+```text
+Testing PDF Parser...
+  ✓ PDF parser executed successfully.
+Testing DOCX Parser...
+  ✓ DOCX parser extracted text properly.
+Testing PPTX Parser...
+  ✓ PPTX parser extracted presentation text properly.
+Testing PostgreSQL Connection and Tables...
+  Connection check: connected=True, msg=Connected: PostgreSQL 18...
+  Database init: success=True, msg=Database initialized successfully...
+  ✓ PostgreSQL tables, CRUD operations, and JSON serialization verified!
+
+🎉 ALL TESTS PASSED SUCCESSFULLY!
+```
+
+### Step 6: Launch the Streamlit Application
+```bash
+uv run streamlit run app.py
+```
+Open your web browser and navigate to:  
+👉 **`http://localhost:8501`**
+
+---
+
+## 8. 🔄 End-to-End Flow Diagrams
+
+### 8.1 System Architecture & Data Flow
 
 ```mermaid
 flowchart TB
@@ -129,12 +328,12 @@ flowchart TB
 
 ---
 
-### 2. User Interaction Sequence Diagram
+### 8.2 User Interaction Sequence Diagram
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Candidate / User
+    actor User as Candidate / Recruiter
     participant App as Streamlit (pages/1_🎯_ATS_Checker.py)
     participant Parser as parsers/document_parser.py
     participant RAG as rag/vectorstore.py
@@ -159,7 +358,7 @@ sequenceDiagram
     LangChain-->>App: Validated ATS scores, keywords, suggestions
     
     App->>DB: 9. save_evaluation(eval_data)
-    DB-->>App: Record persisted
+    DB-->>App: Record persisted in PostgreSQL
     App-->>User: 10. Renders 4 Metric Scorecards, Keyword Chips & Tabs
 
     opt User Requests Full Resume Rewrite
@@ -185,7 +384,7 @@ sequenceDiagram
 
 ---
 
-### 3. Database Entity-Relationship (ER) Diagram
+### 8.3 Database Entity-Relationship (ER) Diagram
 
 ```mermaid
 erDiagram
@@ -226,9 +425,9 @@ erDiagram
 
 ---
 
-## 🧩 Comprehensive Module Descriptions
+## 9. 🧩 Comprehensive Module Descriptions
 
-### 1. Document Parsing Layer: `parsers/document_parser.py`
+### 9.1 Document Parsing Layer: `parsers/document_parser.py`
 - **File**: [`src/resume_ats_checker/parsers/document_parser.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/parsers/document_parser.py)
 - **Purpose**: Provides a unified, format-agnostic text extraction service for resumes.
 - **Key Functions**:
@@ -240,7 +439,7 @@ erDiagram
 
 ---
 
-### 2. RAG & Vector Retrieval Engine: `rag/vectorstore.py`
+### 9.2 RAG & Vector Retrieval Engine: `rag/vectorstore.py`
 - **File**: [`src/resume_ats_checker/rag/vectorstore.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/vectorstore.py)
 - **Purpose**: Powers semantic chunking, vector embedding generation, and cosine similarity matching between resume evidence and job requirements.
 - **Key Functions**:
@@ -256,11 +455,11 @@ erDiagram
 
 ---
 
-### 3. LangChain ATS Evaluation Chain: `rag/chains.py`
+### 9.3 LangChain ATS Evaluation Chain: `rag/chains.py`
 - **File**: [`src/resume_ats_checker/rag/chains.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/chains.py)
 - **Purpose**: Executes an elite ATS audit prompt using LangChain and OpenAI structured outputs.
 - **Pydantic Schema**: `ATSEvaluationResult`
-  - `candidate_name`: Extracted name.
+  - `candidate_name`: Extracted candidate name.
   - `job_title`: Target job title from JD.
   - `overall_score`: Rigorous match percentage (0–100%).
   - `skills_score`: Direct technical/hard skills coverage (0–100%).
@@ -276,7 +475,7 @@ erDiagram
 
 ---
 
-### 4. Resume Rewrite & Regeneration Engine: `rag/rewrite_chain.py`
+### 9.4 Resume Rewrite & Regeneration Engine: `rag/rewrite_chain.py`
 - **File**: [`src/resume_ats_checker/rag/rewrite_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/rewrite_chain.py)
 - **Purpose**: Complete reconstruction of candidate resumes to target 95%+ ATS match rates while preserving factual integrity.
 - **Key Functions**:
@@ -288,7 +487,7 @@ erDiagram
 
 ---
 
-### 5. Cover Letter Generator: `rag/cover_letter_chain.py`
+### 9.5 Cover Letter Generator: `rag/cover_letter_chain.py`
 - **File**: [`src/resume_ats_checker/rag/cover_letter_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/cover_letter_chain.py)
 - **Purpose**: Generates persuasive, customized cover letters.
 - **Key Functions**:
@@ -299,7 +498,7 @@ erDiagram
 
 ---
 
-### 6. PostgreSQL Database & Storage Layer
+### 9.6 PostgreSQL Database & Storage Layer: `database/`
 - **Files**:
   - [`src/resume_ats_checker/database/connection.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/connection.py)
   - [`src/resume_ats_checker/database/repository.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/repository.py)
@@ -314,7 +513,7 @@ erDiagram
 
 ---
 
-### 7. Application Configuration: `config.py`
+### 9.7 Application Configuration: `config.py`
 - **File**: [`src/resume_ats_checker/config.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/config.py)
 - **Purpose**: Type-safe settings management using `pydantic-settings`.
 - **Fields**:
@@ -324,7 +523,7 @@ erDiagram
 
 ---
 
-### 8. UI Design System & Components
+### 9.8 UI Design System & Components: `ui/`
 - **Files**:
   - [`src/resume_ats_checker/ui/styles.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/ui/styles.py)
   - [`src/resume_ats_checker/ui/components.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/ui/components.py)
@@ -340,7 +539,7 @@ erDiagram
 
 ---
 
-### 9. Streamlit Application Pages
+### 9.9 Streamlit Application Pages
 - **Main Dashboard**: [`app.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/app.py)
   - Executive overview, quick-start guide, live sidebar connection indicators (PostgreSQL and OpenAI), and recent evaluation logs.
 - **ATS Checker Workspace**: [`pages/1_🎯_ATS_Checker.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/1_%F0%9F%8E%AF_ATS_Checker.py)
@@ -356,46 +555,23 @@ erDiagram
 
 ---
 
-## 🚀 Getting Started & Installation
+## 10. ⚙️ Environment Variables Reference
 
-### 1. Prerequisites
-- **Python 3.11+** (managed automatically via `uv`)
-- **PostgreSQL 14+** (running locally on port 5432 or via Docker)
-- **OpenAI API Key**
-
-### 2. Configure Environment
-Copy `.env.example` to `.env`:
-```bash
-cp .env.example .env
-```
-Ensure your credentials are set in `.env`:
-```env
-OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4o-mini
-EMBEDDING_MODEL=text-embedding-3-small
-
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=postgres
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_password
-DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/postgres
-```
-
-### 3. Sync Dependencies with `uv`
-```bash
-uv sync
-```
-
-### 4. Run the Application
-```bash
-uv run streamlit run app.py
-```
-Open **`http://localhost:8501`** in your browser.
+| Variable Name | Required | Default Value | Description |
+| :--- | :---: | :--- | :--- |
+| `OPENAI_API_KEY` | **Yes** | *None* | OpenAI API Key for embeddings and GPT-4o models. |
+| `OPENAI_MODEL` | No | `gpt-4o-mini` | Chat model used for scoring, rewriting, and cover letters. |
+| `EMBEDDING_MODEL` | No | `text-embedding-3-small` | Embedding model used for semantic RAG chunk vectorization. |
+| `POSTGRES_HOST` | No | `localhost` | Hostname of the PostgreSQL database instance. |
+| `POSTGRES_PORT` | No | `5432` | Port on which PostgreSQL is listening. |
+| `POSTGRES_DB` | No | `postgres` | Target database name. |
+| `POSTGRES_USER` | No | `postgres` | Database username. |
+| `POSTGRES_PASSWORD` | **Yes** | *None* | Database password. |
+| `DATABASE_URL` | No | *Computed* | Complete SQLAlchemy connection string (e.g. `postgresql+psycopg://...`). |
 
 ---
 
-## 🧪 Testing & Verification
+## 11. 🧪 Testing & Verification
 
 Run the automated test suite verifying multi-format parsers, PostgreSQL tables, and CRUD operations:
 ```bash
@@ -420,7 +596,7 @@ Testing PostgreSQL Connection and Tables...
 
 ---
 
-## 🔮 Future Expansion Roadmap
+## 12. 🔮 Future Expansion Roadmap
 
 1. **Resume Builder Direct Export**: Connect `pages/2_📝_Resume_Builder.py` with `weasyprint` or `reportlab` to render downloadable PDF templates directly from the rewritten Markdown resume.
 2. **Batch Resume Screening**: Support uploading a ZIP or folder of multiple candidate resumes against a single Job Description to rank applicants by ATS match score.
