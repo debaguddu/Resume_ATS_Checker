@@ -13,6 +13,7 @@ An enterprise-grade, modular, **RAG-powered Resume ATS (Applicant Tracking Syste
 ---
 
 ## 📖 Table of Contents
+0. [Implementation Plan Specification](IMPLEMENTATION_PLAN.md)
 1. [System Architecture & Design Philosophy](#-system-architecture--design-philosophy)
 2. [End-to-End Flow Diagrams](#-end-to-end-flow-diagrams)
    - [System Architecture & Data Flow](#1-system-architecture--data-flow)
