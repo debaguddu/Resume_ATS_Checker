@@ -109,8 +109,11 @@ def init_db() -> Tuple[bool, str]:
                 );
                 """
             conn.execute(text(create_emb_sql))
+            # 4. Create index on evaluation_id for rapid multi-user partitioned lookups
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_resume_embeddings_eval_id ON resume_embeddings(evaluation_id);"))
             conn.commit()
             return True, f"Database initialized successfully (pgvector: {has_vector})."
     except Exception as exc:
+
         logger.error("Failed to initialize database: %s", exc)
         return False, str(exc)

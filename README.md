@@ -617,26 +617,27 @@ erDiagram
 
 ## 11. 🧪 Testing & Verification
 
-Run the automated test suite verifying multi-format parsers, PostgreSQL tables, and CRUD operations:
+Run the automated test suites verifying multi-format parsers, PostgreSQL tables, CRUD operations, and multi-user concurrency:
 ```bash
+# Core verification test suite
 uv run python tests/test_suite.py
+
+# Multi-user concurrency & vector isolation test suite
+uv run python tests/test_concurrency.py
 ```
 
 Expected output:
 ```text
-Testing PDF Parser...
-  ✓ PDF parser executed successfully.
-Testing DOCX Parser...
-  ✓ DOCX parser extracted text properly.
-Testing PPTX Parser...
-  ✓ PPTX parser extracted presentation text properly.
-Testing PostgreSQL Connection and Tables...
-  Connection check: connected=True, msg=Connected: PostgreSQL 18.6...
-  Database init: success=True, msg=Database initialized successfully...
-  ✓ PostgreSQL tables, CRUD operations, and JSON serialization verified!
+Testing Multi-User Concurrency & Database Vector Isolation...
+  ✓ Index idx_resume_embeddings_eval_id verified on resume_embeddings.
+  Executing parallel evaluations for Candidate Alice and Candidate Bob...
+  ✓ Both parallel evaluations completed: Alice ID=..., Bob ID=...
+  ✓ Perfect data isolation confirmed: 0% cross-talk between concurrent candidates.
+  ✓ Test artifacts cleaned up successfully.
 
-🎉 ALL TESTS PASSED SUCCESSFULLY!
+🎉 ALL CONCURRENCY & ISOLATION TESTS PASSED SUCCESSFULLY!
 ```
+
 
 ---
 

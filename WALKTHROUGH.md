@@ -241,6 +241,11 @@ Resume ATS Checker/
 - Automated audit trail saving scores, keywords, and generated documents.
 - Fallback vector storage supporting both native `pgvector` and standard `JSONB`.
 - **Interactive Vector DB Inspector**: An in-app inspector under Tab 1 ("🔍 Diagnostics & RAG Evidence") letting users explore all stored vectors, chunk previews, 1536-d float previews, and pre-formatted SQL queries.
+- **Multi-User Isolation & Performance Hardening**:
+  - B-tree index `idx_resume_embeddings_eval_id` for fast partitioned queries.
+  - Atomic single-roundtrip batch insert for 1536-d embedding chunks.
+  - Full UUID4 global uniqueness across all evaluations.
+  - Automated session state reset when switching resume files within the same browser session.
 
 ---
 
@@ -250,7 +255,11 @@ The comprehensive automated test suite is located in [`tests/test_suite.py`](fil
 
 ### Running Tests:
 ```bash
+# Main comprehensive test suite
 uv run python tests/test_suite.py
+
+# Multi-user concurrency & vector isolation test suite
+uv run python tests/test_concurrency.py
 ```
 
 ### Verification Matrix:
@@ -262,6 +271,8 @@ uv run python tests/test_suite.py
 | `test_database_integration` | `connection.py` & `repository.py` | Validates PostgreSQL connection, DDL & CRUD | `PASSED` |
 | `test_builder_schema` | `builder_chain.py` | Validates Pydantic `StructuredResume` schema | `PASSED` |
 | `test_exporter` | `exporter.py` | Validates Word, PDF, and Text byte streams | `PASSED` |
+| `test_concurrent_isolation` | `repository.py` & `connection.py` | Simulates parallel evaluations, B-tree index & 0% cross-talk | `PASSED` |
+
 
 ---
 

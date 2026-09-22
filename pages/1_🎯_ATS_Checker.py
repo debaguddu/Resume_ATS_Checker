@@ -93,6 +93,12 @@ with col_upload:
 
     if uploaded_file is not None:
         try:
+            # Check if user switched to a different resume file in this session
+            if uploaded_file.name != st.session_state.get("uploaded_file_name"):
+                # Clear stale evaluation state for the previous candidate/resume
+                for key in ["eval_result", "current_eval_id", "rag_matches", "embedded_chunks", "suggested_resume", "cover_letter"]:
+                    st.session_state.pop(key, None)
+
             file_bytes = uploaded_file.getvalue()
             resume_text, metadata = parse_document(uploaded_file.name, file_bytes)
             st.session_state["parsed_resume_text"] = resume_text
@@ -153,8 +159,8 @@ if analyze_clicked:
                 )
                 st.session_state["eval_result"] = eval_res
 
-                # Generate unique ID for this evaluation
-                eval_id = str(uuid.uuid4())[:8]
+                # Generate globally unique UUID4 for this evaluation
+                eval_id = str(uuid.uuid4())
                 st.session_state["current_eval_id"] = eval_id
                 st.session_state["suggested_resume"] = None
                 st.session_state["cover_letter"] = None
@@ -163,6 +169,7 @@ if analyze_clicked:
                 save_data = {
                     "id": eval_id,
                     "candidate_name": eval_res.candidate_name,
+
                     "resume_filename": st.session_state.get("uploaded_file_name", "resume"),
                     "resume_format": st.session_state.get("resume_format", "pdf"),
                     "job_title": eval_res.job_title,

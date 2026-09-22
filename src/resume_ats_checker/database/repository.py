@@ -138,35 +138,37 @@ def get_evaluation_by_id(evaluation_id: str) -> Optional[Dict[str, Any]]:
 
 
 def save_resume_embeddings(evaluation_id: str, embedded_chunks: List[Dict[str, Any]]) -> bool:
-    """Save chunk texts and their 1536-dimensional embedding vectors into resume_embeddings table."""
+    """Save chunk texts and their 1536-dimensional embedding vectors into resume_embeddings table in a single batch."""
+    if not embedded_chunks:
+        return True
     try:
         engine = get_engine()
         sql = """
         INSERT INTO resume_embeddings (evaluation_id, chunk_type, chunk_index, content, embedding)
         VALUES (:evaluation_id, :chunk_type, :chunk_index, :content, :embedding);
         """
+        params_list = []
+        for chunk in embedded_chunks:
+            emb_val = chunk["embedding"]
+            if isinstance(emb_val, (list, tuple)):
+                emb_str = json.dumps(list(emb_val))
+            else:
+                emb_str = str(emb_val)
+            params_list.append({
+                "evaluation_id": evaluation_id,
+                "chunk_type": chunk.get("chunk_type", "resume"),
+                "chunk_index": int(chunk.get("chunk_index", 0)),
+                "content": chunk.get("content", ""),
+                "embedding": emb_str,
+            })
         with engine.connect() as conn:
-            for chunk in embedded_chunks:
-                emb_val = chunk["embedding"]
-                if isinstance(emb_val, (list, tuple)):
-                    emb_str = json.dumps(list(emb_val))
-                else:
-                    emb_str = str(emb_val)
-                conn.execute(
-                    text(sql),
-                    {
-                        "evaluation_id": evaluation_id,
-                        "chunk_type": chunk.get("chunk_type", "resume"),
-                        "chunk_index": int(chunk.get("chunk_index", 0)),
-                        "content": chunk.get("content", ""),
-                        "embedding": emb_str,
-                    },
-                )
+            conn.execute(text(sql), params_list)
             conn.commit()
             return True
     except Exception as exc:
-        logger.error("Failed to save resume embeddings: %s", exc)
+        logger.error("Failed to save resume embeddings in batch: %s", exc)
         return False
+
 
 
 def get_embeddings_by_evaluation_id(evaluation_id: str) -> List[Dict[str, Any]]:
