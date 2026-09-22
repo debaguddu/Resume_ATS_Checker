@@ -1,28 +1,35 @@
-# Resume ATS Checker - End-to-End Walkthrough & Feature Guide
+# Resume ATS Checker - Complete Technical Specifications & Feature Walkthrough
 
-This walkthrough document tracks all features, capabilities, user workflows, and architectural components built in the **Resume ATS Checker** application. It serves as an active living guide and will be continually updated as new features are added.
+This document serves as the **single living source of truth** for the technical architecture, module contracts, database schemas, feature workflows, and verification test suite of the **Resume ATS Checker** application.
 
 ---
 
 ## 📋 Table of Contents
-1. [System Overview & Architecture](#1-system-overview--architecture)
-2. [Module Breakdown](#2-module-breakdown)
-3. [Feature Walkthrough](#3-feature-walkthrough)
+1. [System Architecture & Data Flow](#1-system-architecture--data-flow)
+2. [Directory Structure](#2-directory-structure)
+3. [Technical Module & API Specifications](#3-technical-module--api-specifications)
+   - [A. Document Parser (`parsers/document_parser.py`)](#a-document-parser-parsersdocument_parserpy)
+   - [B. RAG & Vectorstore Engine (`rag/vectorstore.py`)](#b-rag--vectorstore-engine-ragvectorstorepy)
+   - [C. ATS Scoring Chain (`rag/chains.py`)](#c-ats-scoring-chain-ragchainspy)
+   - [D. Resume Rewrite Engine (`rag/rewrite_chain.py`)](#d-resume-rewrite-engine-ragrewrite_chainpy)
+   - [E. Cover Letter Generator (`rag/cover_letter_chain.py`)](#e-cover-letter-generator-ragcover_letter_chainpy)
+   - [F. Structured Resume Builder Engine (`rag/builder_chain.py`)](#f-structured-resume-builder-engine-ragbuilder_chainpy)
+   - [G. Multi-Format Exporter (`utils/exporter.py`)](#g-multi-format-exporter-utilsexporterpy)
+   - [H. Database Persistence (`database/`)](#h-database-persistence-database)
+4. [End-to-End Feature Walkthrough](#4-end-to-end-feature-walkthrough)
    - [Feature 1: Multi-Format Document Ingestion](#feature-1-multi-format-document-ingestion)
    - [Feature 2: RAG-Powered ATS Scoring & Match Analysis](#feature-2-rag-powered-ats-scoring--match-analysis)
    - [Feature 3: Strategic Complete Resume Rewriting & Regeneration](#feature-3-strategic-complete-resume-rewriting--regeneration)
    - [Feature 4: Tailored Cover Letter Generator](#feature-4-tailored-cover-letter-generator)
    - [Feature 5: Interactive Structured Resume Builder](#feature-5-interactive-structured-resume-builder)
-   - [Feature 6: Multi-Format Exporter (Word / PDF / Text / Markdown)](#feature-6-multi-format-exporter-word--pdf--text--markdown)
+   - [Feature 6: Multi-Format Document Exporter (Word / PDF / Text / Markdown)](#feature-6-multi-format-document-exporter-word--pdf--text--markdown)
    - [Feature 7: PostgreSQL Audit Logging & Vector Store](#feature-7-postgresql-audit-logging--vector-store)
-4. [Automated Verification & Test Suite](#4-automated-verification--test-suite)
-5. [Maintenance Protocol: Keeping This Walkthrough Updated](#5-maintenance-protocol-keeping-this-walkthrough-updated)
+5. [Automated Verification & Test Suite](#5-automated-verification--test-suite)
+6. [Maintenance Protocol: Keeping This Document Updated](#6-maintenance-protocol-keeping-this-document-updated)
 
 ---
 
-## 1. System Overview & Architecture
-
-The application is built with a modular, enterprise-grade architecture:
+## 1. System Architecture & Data Flow
 
 ```mermaid
 flowchart TD
@@ -61,12 +68,12 @@ flowchart TD
 ### Core Technologies:
 - **Frontend / UI**: [Streamlit](https://streamlit.io/) with custom glassmorphism styles, responsive columns, and real-time session state management.
 - **LLM Orchestration**: [LangChain](https://www.langchain.com/) with OpenAI `gpt-4o-mini` and `text-embedding-3-small`.
-- **Database**: PostgreSQL 18 with relational tables and vector embeddings support.
+- **Database**: PostgreSQL 18 with relational audit logging and vector embeddings fallback.
 - **Document Processing**: `pypdf`, `python-docx`, `python-pptx`, and `reportlab`.
 
 ---
 
-## 2. Module Breakdown
+## 2. Directory Structure
 
 ```
 Resume ATS Checker/
@@ -92,123 +99,176 @@ Resume ATS Checker/
 │       │   ├── styles.py                # Glassmorphism dark mode CSS tokens & styling
 │       │   └── components.py            # Reusable UI cards, skill chips, and metric gauges
 │       └── utils/
+│           ├── __init__.py
 │           └── exporter.py              # Document exporter generating Word (.docx), PDF (.pdf), Text (.txt)
 ├── tests/
 │   └── test_suite.py                    # Automated verification test suite
-├── IMPLEMENTATION_PLAN.md               # Technical design specifications
-├── README.md                            # Comprehensive project overview & documentation
-├── WALKTHROUGH.md                       # Living walkthrough & feature tracking document
+├── README.md                            # Public overview, quickstart & setup guide
+├── WALKTHROUGH.md                       # Complete technical specifications & living feature walkthrough
 └── AGENTS.md                            # Workspace synchronization rules
 ```
 
 ---
 
-## 3. Feature Walkthrough
+## 3. Technical Module & API Specifications
 
-### Feature 1: Multi-Format Document Ingestion
+### A. Document Parser (`parsers/document_parser.py`)
 - **Location**: [`src/resume_ats_checker/parsers/document_parser.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/parsers/document_parser.py)
-- **Supported Formats**:
-  - **PDF (`.pdf`)**: Extracted page by page via `pypdf.PdfReader` with whitespace normalization.
-  - **Word (`.docx`)**: Paragraphs, section headers, and cell contents from embedded tables extracted via `python-docx`.
-  - **PowerPoint (`.pptx`)**: Text frames, candidate portfolio slide decks, and speaker notes extracted via `python-pptx`.
-  - **Plain Text (`.txt`)**: Clean Unicode ingestion.
-- **Safety**: Validates file streams, strips null bytes, and generates diagnostic metadata (word count, character count, format).
+- **Functions**:
+  - `parse_document(filename: str, file_bytes: bytes) -> Tuple[str, Dict[str, Any]]`
+  - `parse_pdf(file_bytes: bytes) -> str`
+  - `parse_docx(file_bytes: bytes) -> str`
+  - `parse_pptx(file_bytes: bytes) -> str`
+  - `clean_text(raw_text: str) -> str`
+- **Inputs**: File name and raw binary byte stream.
+- **Outputs**: Cleaned plain text string, metadata dictionary (`format`, `char_count`, `word_count`).
+- **Dependencies**: `pypdf`, `python-docx`, `python-pptx`.
 
-### Feature 2: RAG-Powered ATS Scoring & Match Analysis
-- **Location**: [`src/resume_ats_checker/rag/`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/) & [`pages/1_🎯_ATS_Checker.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/1_%F0%9F%8E%AF_ATS_Checker.py)
-- **Workflow**:
-  1. Semantic Chunking: Resume and Job Description are divided into overlapping chunks via `RecursiveCharacterTextSplitter`.
-  2. Embeddings & Similarity: Chunks are vectorized using OpenAI `text-embedding-3-small`. Cosine similarity identifies exact requirement-to-experience alignments and flags gaps.
-  3. Weighted ATS Scoring:
-     - **Skills Match (45%)**: Coverage of must-have tools, programming languages, and certifications.
-     - **Experience Relevance (40%)**: Alignment between past job responsibilities and JD expectations.
-     - **ATS Formatting (15%)**: Readability, standard headers, and bullet clarity.
-  4. Visual Scorecard: Overall ATS score rendered with a color-coded circular gauge, metric delta cards, missing keyword warning chips, identified strengths, and actionable Google X-Y-Z format recommendations ("Accomplished [X] as measured by [Y], by doing [Z]").
+### B. RAG & Vectorstore Engine (`rag/vectorstore.py`)
+- **Location**: [`src/resume_ats_checker/rag/vectorstore.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/vectorstore.py)
+- **Functions**:
+  - `chunk_text(text: str, chunk_size: int = 500, chunk_overlap: int = 100) -> List[str]`
+  - `get_embeddings_model() -> OpenAIEmbeddings`
+  - `cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float`
+  - `perform_rag_analysis(resume_text: str, jd_text: str) -> Dict[str, Any]`
+- **Inputs**: Raw resume text, target Job Description text.
+- **Outputs**: Top requirement-to-evidence matches, mean semantic similarity score.
+- **Dependencies**: `langchain-openai`, `langchain-text-splitters`, `numpy`.
 
-### Feature 3: Strategic Complete Resume Rewriting & Regeneration
+### C. ATS Scoring Chain (`rag/chains.py`)
+- **Location**: [`src/resume_ats_checker/rag/chains.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/chains.py)
+- **Pydantic Schema**: `ATSEvaluationResult`
+  - `overall_score: int` (0-100)
+  - `skills_score: int` (45% weight: must-have tools, languages, certifications)
+  - `experience_score: int` (40% weight: scope, impact, relevant seniority)
+  - `formatting_score: int` (15% weight: readability, standard headers, bullet structure)
+  - `candidate_name: str`
+  - `matched_keywords: List[str]`
+  - `missing_keywords: List[str]`
+  - `strengths: List[str]`
+  - `weaknesses: List[str]`
+  - `actionable_recommendations: List[str]` (Google X-Y-Z formula recommendations)
+  - `executive_summary: str`
+- **Functions**: `evaluate_resume_ats(resume_text: str, jd_text: str, rag_context: Dict[str, Any]) -> ATSEvaluationResult`
+- **Dependencies**: `langchain-openai`, `pydantic`.
+
+### D. Resume Rewrite Engine (`rag/rewrite_chain.py`)
 - **Location**: [`src/resume_ats_checker/rag/rewrite_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/rewrite_chain.py)
-- **Workflow**:
-  - Under **Tab 3 ("Suggested Complete Resume")**, a full, ATS-optimized rewrite of the candidate's resume is rendered in clean Markdown.
-  - **Multi-Angle Regeneration**: Users can choose from 4 strategic perspectives and click **"🔄 Regenerate Resume"**:
-    1. *Targeted ATS Optimization*: Maximum keyword density and direct phrase matching.
-    2. *Executive & Leadership Impact*: Strategic leadership, business ROI, and stakeholder influence.
-    3. *Technical & Architectural Depth*: In-depth system design, frameworks, algorithms, and infrastructure.
-    4. *Metric-Heavy & Data-Driven*: Quantified achievements, percentages, scale, and performance gains.
-  - Updates are saved directly to the database audit record.
+- **Functions**: `generate_suggested_resume(resume_text: str, jd_text: str, missing_keywords: List[str], variation_focus: str = "Targeted ATS Optimization") -> str`
+- **Supported Strategic Angles**:
+  1. *Targeted ATS Optimization*
+  2. *Executive & Leadership Impact*
+  3. *Technical & Architectural Depth*
+  4. *Metric-Heavy & Data-Driven*
+- **Outputs**: Full Markdown rewrite tailored to JD requirements.
 
-### Feature 4: Tailored Cover Letter Generator
+### E. Cover Letter Generator (`rag/cover_letter_chain.py`)
 - **Location**: [`src/resume_ats_checker/rag/cover_letter_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/cover_letter_chain.py)
-- **Workflow**:
-  - Under **Tab 4 ("Tailored Cover Letter")**, users can click **"✨ Generate Tailored Cover Letter"**.
-  - Synthesizes candidate strengths with specific target company requirements into a compelling 3-4 paragraph pitch.
-  - One-click copy/download in plain text or Markdown.
+- **Functions**: `generate_cover_letter(resume_text: str, jd_text: str, candidate_name: str, target_role: str = "") -> str`
+- **Outputs**: Formatted, persuasive Markdown cover letter.
 
-### Feature 5: Interactive Structured Resume Builder
-- **Location**: [`pages/2_📝_Resume_Builder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/2_%F0%9F%93%9D_Resume_Builder.py) & [`src/resume_ats_checker/rag/builder_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/builder_chain.py)
-- **Two Entry Modes**:
-  1. **Cross-Navigation from ATS Checker**: When navigating via **"🛠️ Customize in Interactive Resume Builder"**, the candidate's resume text and target JD are automatically loaded.
-  2. **Standalone Mode**: Candidates can upload any reference resume, paste a target JD, and trigger AI decomposition, or load pre-populated sample data.
-- **Accordion Checklists**:
-  - `> Contact Information`: Full Name, Target Title, Email, Phone, Location, Portfolio Links.
-  - `> Target Title`: Suggested target role headline.
-  - `> Professional Summary`: Editable summary with an inclusion toggle.
-  - `> Work Experience`: Company name, role title, dates, location, and **individual checkboxes next to each achievement bullet point**.
-  - `> Education`: School, degree, location, dates, and inclusion checkboxes.
-  - `> Skills & Interests`: Categorized technical languages, frameworks, and cloud tools.
-  - `> Certifications`, `> Projects`, `> Awards`, `> Leadership`, `> Publications`.
-- **Live Dynamic Preview Drawer**:
-  - A real-time Markdown preview updates instantly as users check or uncheck individual bullets or entire sections.
+### F. Structured Resume Builder Engine (`rag/builder_chain.py`)
+- **Location**: [`src/resume_ats_checker/rag/builder_chain.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/builder_chain.py)
+- **Pydantic Schemas**:
+  - `WorkExperienceEntry`: `company`, `role`, `location`, `employment_type`, `start_date`, `end_date`, `bullets: List[str]`
+  - `EducationEntry`: `institution`, `degree`, `location`, `start_date`, `end_date`
+  - `ProjectEntry`: `title`, `technologies`, `description`, `bullets: List[str]`
+  - `StructuredResume`: `full_name`, `target_title`, `email`, `phone`, `location`, `linkedin`, `github_portfolio`, `professional_summary`, `skills_languages`, `skills_frameworks`, `skills_cloud_tools`, `work_experience`, `education`, `certifications`, `projects`, `awards`, `leadership_activities`, `publications`
+- **Functions**:
+  - `decompose_and_tailor_resume(resume_text: str, job_description: str) -> StructuredResume`
+  - `generate_default_sample_resume() -> StructuredResume`
 
-### Feature 6: Multi-Format Exporter (Word / PDF / Text / Markdown)
+### G. Multi-Format Exporter (`utils/exporter.py`)
 - **Location**: [`src/resume_ats_checker/utils/exporter.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/utils/exporter.py)
-- **Available Formats**:
-  1. **Word (`.docx`)**:
-     - Built with `python-docx`.
-     - Standard 0.75-inch margins, Calibri font, navy section headers with bottom borders, bold positions/companies, italic dates/locations, and native Word bullet lists.
-  2. **PDF (`.pdf`)**:
-     - Built with `reportlab.platypus` (`SimpleDocTemplate`, `Paragraph`, `HRFlowable`, `Spacer`).
-     - Vector layout, crisp lines, clean page breaking, and zero external GTK/Pango C-library dependencies on Windows.
-  3. **Plain Text (`.txt`)**:
-     - Clean ASCII representation with section dividers (`-----`) and bullet points (`•`) for direct paste into legacy ATS portals.
-  4. **Markdown (`.md`)**:
-     - Clean markdown output for GitHub portfolios and personal sites.
-- **Available On**:
-  - Both the **Interactive Resume Builder** (exporting user-checked selections) and the **ATS Checker** (exporting rewritten complete resumes).
+- **Functions**:
+  - `generate_docx_from_structured_resume(resume: StructuredResume, selections: Dict[str, Any]) -> bytes`
+  - `generate_pdf_from_structured_resume(resume: StructuredResume, selections: Dict[str, Any]) -> bytes`
+  - `generate_txt_from_structured_resume(resume: StructuredResume, selections: Dict[str, Any]) -> str`
+  - `generate_docx_from_markdown(markdown_text: str, candidate_name: str) -> bytes`
+  - `generate_pdf_from_markdown(markdown_text: str, candidate_name: str) -> bytes`
+- **Outputs**: Byte streams (`.docx`, `.pdf`) and plain text string (`.txt`).
+- **Dependencies**: `python-docx`, `reportlab`.
 
-### Feature 7: PostgreSQL Audit Logging & Vector Store
+### H. Database Persistence (`database/`)
 - **Location**: [`src/resume_ats_checker/database/`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/)
-- **Tables**:
-  - `evaluations`: Stores candidate name, filenames, scores, matched keywords, missing keywords, rewritten resumes, and cover letters.
-  - `resume_embeddings`: Stores chunk embeddings supporting native `pgvector` or standard `JSONB` fallback.
-- **Auto-Initialization**: Schema and tables are created automatically on startup.
+- **Modules**:
+  - `connection.py`: `check_connection()`, `init_db()`, SQLAlchemy engine pool creation.
+  - `repository.py`: `save_evaluation()`, `get_evaluation_by_id()`, `get_recent_evaluations()`, `update_suggested_resume()`, `update_cover_letter()`, `save_resume_embeddings()`.
+- **Database Tables**:
+  - `evaluations`: Primary evaluation records (scores, keywords, recommendations, outputs).
+  - `resume_embeddings`: Document chunks and vectors (`pgvector` or `JSONB`).
 
 ---
 
-## 4. Automated Verification & Test Suite
+## 4. End-to-End Feature Walkthrough
 
-The comprehensive test suite is located in [`tests/test_suite.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/tests/test_suite.py).
+### Feature 1: Multi-Format Document Ingestion
+- Upload PDF, Word (`.docx`), PowerPoint (`.pptx`), or plain text resumes.
+- Automatically handles complex slide shapes, speaker notes, and embedded table cells.
+- Normalizes whitespace, strips invalid characters, and extracts structural text.
 
-### How to Run:
+### Feature 2: RAG-Powered ATS Scoring & Match Analysis
+- RAG pipeline chunks both documents, embeds them with OpenAI `text-embedding-3-small`, and performs cosine similarity retrieval.
+- Evaluates skills match, experience relevance, and ATS formatting with clear breakdown scorecards.
+- Highlights missing keywords in red chips, matched skills in green chips, and provides Google X-Y-Z formula recommendations.
+
+### Feature 3: Strategic Complete Resume Rewriting & Regeneration
+- Full resume rewrite tailored to the JD.
+- Interactive multi-angle dropdown allowing the candidate to regenerate using 4 strategic perspectives:
+  1. *Targeted ATS Optimization*
+  2. *Executive & Leadership Impact*
+  3. *Technical & Architectural Depth*
+  4. *Metric-Heavy & Data-Driven*
+
+### Feature 4: Tailored Cover Letter Generator
+- Crafts a personalized 3-4 paragraph cover letter aligning candidate achievements with the employer's specific mission.
+- Downloadable in plain text or Markdown.
+
+### Feature 5: Interactive Structured Resume Builder
+- **Cross-Navigation**: Easily hand off parsed resume and JD directly from the ATS Checker.
+- **Standalone Mode**: Upload reference resumes or paste JDs independently, or load sample data.
+- **Accordion Checklists**: Granular control with checkboxes next to each role, credential, and individual bullet point.
+- **Live Preview**: Real-time compilation displaying only checked elements.
+
+### Feature 6: Multi-Format Document Exporter (Word / PDF / Text / Markdown)
+- One-click downloads available in both the **Interactive Resume Builder** and the **ATS Checker**:
+  - **Word (`.docx`)**: Clean typography, 0.75" margins, bold titles, native Word bullets.
+  - **PDF (`.pdf`)**: Publication-grade vector PDF generated via ReportLab with zero GTK dependencies.
+  - **Text (`.txt`)**: Clean ASCII layout for legacy ATS job portals.
+  - **Markdown (`.md`)**: Formatted markdown for developer profiles.
+
+### Feature 7: PostgreSQL Audit Logging & Vector Store
+- Automated audit trail saving scores, keywords, and generated documents.
+- Fallback vector storage supporting both native `pgvector` and standard `JSONB`.
+
+---
+
+## 5. Automated Verification & Test Suite
+
+The comprehensive automated test suite is located in [`tests/test_suite.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/tests/test_suite.py).
+
+### Running Tests:
 ```bash
 uv run python tests/test_suite.py
 ```
 
-### Verified Test Matrix:
-| Test Component | Purpose | Verification Result |
-| :--- | :--- | :---: |
-| `test_pdf_parsing` | Validates `pypdf` extraction on binary streams | `PASSED` |
-| `test_docx_parsing` | Validates `python-docx` heading & body extraction | `PASSED` |
-| `test_pptx_parsing` | Validates `python-pptx` presentation extraction | `PASSED` |
-| `test_database_integration` | Validates PostgreSQL 18 connection, DDL & CRUD | `PASSED` |
-| `test_builder_schema` | Validates Pydantic `StructuredResume` schema | `PASSED` |
-| `test_exporter` | Validates Word, PDF, and Text byte generation | `PASSED` |
+### Verification Matrix:
+| Test Component | Target Module | Verification Scope | Status |
+| :--- | :--- | :--- | :---: |
+| `test_pdf_parsing` | `document_parser.py` | Validates `pypdf` extraction on binary streams | `PASSED` |
+| `test_docx_parsing` | `document_parser.py` | Validates `python-docx` heading & body extraction | `PASSED` |
+| `test_pptx_parsing` | `document_parser.py` | Validates `python-pptx` presentation extraction | `PASSED` |
+| `test_database_integration` | `connection.py` & `repository.py` | Validates PostgreSQL connection, DDL & CRUD | `PASSED` |
+| `test_builder_schema` | `builder_chain.py` | Validates Pydantic `StructuredResume` schema | `PASSED` |
+| `test_exporter` | `exporter.py` | Validates Word, PDF, and Text byte streams | `PASSED` |
 
 ---
 
-## 5. Maintenance Protocol: Keeping This Walkthrough Updated
+## 6. Maintenance Protocol: Keeping This Document Updated
 
-Whenever new features, pages, database changes, or export capabilities are added:
-1. **Append/Update Features**: Add the new feature details under Section 3 with exact file links, inputs, outputs, and UI interactions.
-2. **Update Architecture Diagram**: Update the Mermaid diagram in Section 1 to reflect any newly introduced nodes or data paths.
-3. **Update Test Matrix**: Document any new automated tests added to `tests/test_suite.py`.
-4. **Synchronize with Documentation**: Ensure changes are concurrently documented in `README.md`, `IMPLEMENTATION_PLAN.md`, and committed to git.
+Whenever new features, database tables, UI pages, or export capabilities are added:
+1. **Update Architecture & Diagrams**: Update Section 1 and Section 2 if modules or data flow change.
+2. **Update Module & API Specifications**: Document new functions, inputs, outputs, schemas, and dependencies in Section 3.
+3. **Update Feature Walkthrough**: Add user interactions, screenshots, and workflows in Section 4.
+4. **Update Test Matrix**: Add newly created test cases to Section 5.
+5. **Synchronize with README.md**: Keep `README.md` and `WALKTHROUGH.md` synchronized and committed to git.

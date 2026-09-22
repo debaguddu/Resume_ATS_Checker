@@ -8,7 +8,7 @@ An enterprise-grade, modular, **RAG-powered Resume ATS (Applicant Tracking Syste
 
 > [!IMPORTANT]
 > **Mandatory Synchronization Rule**: Any changes, additions, or modifications to the system design, architecture, database schema, RAG pipeline, or UI workflows **MUST immediately be updated in this `README.md` file**.  
-> Detailed implementation notes are also maintained in [**`IMPLEMENTATION_PLAN.md`**](IMPLEMENTATION_PLAN.md).
+> Detailed technical specifications and living walkthroughs are maintained in [**`WALKTHROUGH.md`**](WALKTHROUGH.md).
 
 ---
 
@@ -103,8 +103,7 @@ Resume ATS Checker/
 ├── .python-version                   # Pinned Python version (3.12)
 ├── pyproject.toml                    # UV project configuration and package dependencies
 ├── uv.lock                           # Pinned dependency lockfile
-├── IMPLEMENTATION_PLAN.md            # Detailed technical specification & component blueprint
-├── WALKTHROUGH.md                    # Living walkthrough & feature tracking document
+├── WALKTHROUGH.md                    # Complete technical specifications & living feature walkthrough
 ├── README.md                         # Complete project documentation, diagrams & guide
 ├── AGENTS.md                         # Workspace rule for design updates
 ├── app.py                            # Streamlit entrypoint & executive dashboard
