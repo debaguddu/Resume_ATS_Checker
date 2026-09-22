@@ -46,12 +46,13 @@ def perform_rag_analysis(
     resume_text: str,
     job_description: str,
     top_k: int = 4
-) -> Tuple[List[Dict[str, Any]], float]:
+) -> Tuple[List[Dict[str, Any]], float, List[Dict[str, Any]]]:
     """Perform RAG retrieval: match JD requirement chunks against candidate resume chunks.
     
     Returns:
         matches: List of requirement chunks with best matching resume evidence and similarity score.
         average_semantic_score: Mean similarity percentage (0 - 100).
+        embedded_chunks: All document chunks with their 1536-dimensional float vector embeddings.
     """
     embeddings_model = get_embeddings_model()
 
@@ -60,7 +61,7 @@ def perform_rag_analysis(
     jd_docs = chunk_text(job_description, chunk_size=350, chunk_overlap=40)
 
     if not resume_docs or not jd_docs:
-        return [], 0.0
+        return [], 0.0, []
 
     # 2. Generate embeddings
     resume_texts = [d.page_content for d in resume_docs]
@@ -87,6 +88,23 @@ def perform_rag_analysis(
             "status": "Strong Match" if best_sim >= 0.72 else ("Partial Match" if best_sim >= 0.55 else "Missing/Gap"),
         })
 
-    # Sort matches by similarity ascending so biggest gaps are easily surfaced
+    # 4. Prepare embedded chunks for database persistence and vector inspection
+    embedded_chunks = []
+    for idx, (text_chunk, vec) in enumerate(zip(resume_texts, resume_vectors)):
+        embedded_chunks.append({
+            "chunk_type": "resume",
+            "chunk_index": idx,
+            "content": text_chunk,
+            "embedding": vec,
+        })
+    for idx, (text_chunk, vec) in enumerate(zip(jd_texts, jd_vectors)):
+        embedded_chunks.append({
+            "chunk_type": "job_description",
+            "chunk_index": idx,
+            "content": text_chunk,
+            "embedding": vec,
+        })
+
     avg_score = float(np.mean(scores)) * 100 if scores else 0.0
-    return matches, round(avg_score, 1)
+    return matches, round(avg_score, 1), embedded_chunks
+

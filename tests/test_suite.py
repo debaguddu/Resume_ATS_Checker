@@ -25,7 +25,10 @@ from resume_ats_checker.database.repository import (
     get_recent_evaluations,
     update_suggested_resume,
     update_cover_letter,
+    save_resume_embeddings,
+    get_embeddings_by_evaluation_id,
 )
+
 
 
 def test_pdf_parsing():
@@ -118,7 +121,20 @@ def test_database_integration():
 
         recent = get_recent_evaluations(limit=3)
         assert len(recent) > 0, "Expected recent evaluations list to be non-empty"
-        print("  ✓ PostgreSQL tables, CRUD operations, and JSON serialization verified!")
+
+        # Test vector embeddings CRUD
+        test_chunks = [
+            {"chunk_type": "resume", "chunk_index": 0, "content": "Test candidate experience", "embedding": [0.05] * 1536},
+            {"chunk_type": "job_description", "chunk_index": 0, "content": "Seeking AI engineer", "embedding": [0.02] * 1536},
+        ]
+        emb_saved = save_resume_embeddings(test_id, test_chunks)
+        assert emb_saved, "Failed to save vector embeddings"
+        stored_embs = get_embeddings_by_evaluation_id(test_id)
+        assert len(stored_embs) >= 2, f"Expected at least 2 stored embeddings, got {len(stored_embs)}"
+        assert any(e["chunk_type"] == "resume" for e in stored_embs)
+
+        print("  ✓ PostgreSQL tables, CRUD operations, vector embeddings, and JSON serialization verified!")
+
     else:
         print("  ⚠️ PostgreSQL not reachable with current credentials (skipping live CRUD).")
 

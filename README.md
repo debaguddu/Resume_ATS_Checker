@@ -525,10 +525,13 @@ erDiagram
 - **Key Functions**:
   - `get_engine() -> Engine`: Lazily creates an SQLAlchemy engine with connection pooling (`pool_pre_ping=True`, `pool_size=5`).
   - `check_connection() -> (bool, str)`: Runs `SELECT version();` to verify connectivity without crashing if disconnected.
-  - `init_db() -> (bool, str)`: Automatically creates the `evaluations` table and checks if `CREATE EXTENSION IF NOT EXISTS vector;` is supported. If `pgvector` is absent, seamlessly falls back to storing vector embeddings in standard PostgreSQL `JSONB`.
+  - `init_db() -> (bool, str)`: Automatically creates the `evaluations` and `resume_embeddings` tables and checks if `CREATE EXTENSION IF NOT EXISTS vector;` is supported. If `pgvector` is absent, seamlessly falls back to storing vector embeddings in standard PostgreSQL `JSONB`.
   - `save_evaluation(eval_data: dict) -> bool`: Upserts an evaluation audit record.
+  - `save_resume_embeddings(evaluation_id, embedded_chunks) -> bool`: Persists 1536-dimensional float vector embeddings for both resume and JD chunks into `resume_embeddings`.
+  - `get_embeddings_by_evaluation_id(evaluation_id) -> List[dict]`: Retrieves chunk vectors and metadata for the in-app Vector DB Inspector.
   - `update_suggested_resume(eval_id, text) -> bool` & `update_cover_letter(eval_id, text) -> bool`: Targeted updates for generated assets.
   - `get_recent_evaluations(limit=10) -> List[dict]`: Populates dashboard audit drawer.
+
 
 ---
 

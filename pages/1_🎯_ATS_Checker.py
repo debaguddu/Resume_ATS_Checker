@@ -15,6 +15,7 @@ if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 import streamlit as st
+import json
 from resume_ats_checker.config import get_settings
 from resume_ats_checker.parsers.document_parser import parse_document
 from resume_ats_checker.rag.vectorstore import perform_rag_analysis
@@ -23,6 +24,8 @@ from resume_ats_checker.rag.rewrite_chain import generate_suggested_resume
 from resume_ats_checker.rag.cover_letter_chain import generate_cover_letter
 from resume_ats_checker.database.repository import (
     save_evaluation,
+    save_resume_embeddings,
+    get_embeddings_by_evaluation_id,
     update_suggested_resume,
     update_cover_letter,
 )
@@ -135,11 +138,12 @@ if analyze_clicked:
         with st.spinner("🔍 Chunking documents, embedding vectors, and evaluating ATS match..."):
             try:
                 # 1. RAG semantic analysis
-                rag_matches, avg_rag_score = perform_rag_analysis(
+                rag_matches, avg_rag_score, embedded_chunks = perform_rag_analysis(
                     resume_text=st.session_state["parsed_resume_text"],
                     job_description=job_description,
                 )
                 st.session_state["rag_matches"] = rag_matches
+                st.session_state["embedded_chunks"] = embedded_chunks
 
                 # 2. LangChain ATS scoring & diagnostic chain
                 eval_res = evaluate_resume_ats(
@@ -175,7 +179,9 @@ if analyze_clicked:
                     "suggestions": eval_res.suggestions,
                 }
                 save_evaluation(save_data)
-                st.success("✅ Analysis completed and saved to PostgreSQL!")
+                if embedded_chunks:
+                    save_resume_embeddings(eval_id, embedded_chunks)
+                st.success("✅ Analysis completed and saved to PostgreSQL (including vector embeddings)!")
             except Exception as exc:
                 st.error(f"Analysis failed: {exc}")
 
@@ -250,6 +256,85 @@ if eval_res is not None:
                     st.markdown(f"**Job Requirement:**\n> {match['requirement_chunk']}")
                     st.markdown(f"**Best Matching Resume Evidence:**\n> {match['best_resume_evidence']}")
                     st.caption(f"Status: {match['status']} | Similarity: {match['similarity_score']}%")
+
+        # Vector Database & Embeddings Inspector
+        st.markdown("---")
+        st.markdown("### 🧠 Vector Database Inspector (`resume_embeddings` Table)")
+        st.caption("Inspect chunk embeddings stored in PostgreSQL with 1536-dimensional float vectors (`text-embedding-3-small`).")
+
+        curr_id = st.session_state.get("current_eval_id")
+        stored_vectors = get_embeddings_by_evaluation_id(curr_id) if curr_id else []
+
+        if stored_vectors:
+            resume_count = sum(1 for v in stored_vectors if v["chunk_type"] == "resume")
+            jd_count = sum(1 for v in stored_vectors if v["chunk_type"] == "job_description")
+
+            c_v1, c_v2, c_v3, c_v4 = st.columns(4)
+            with c_v1:
+                st.metric("Total Stored Vectors", len(stored_vectors))
+            with c_v2:
+                st.metric("Resume Chunks", resume_count)
+            with c_v3:
+                st.metric("JD Chunks", jd_count)
+            with c_v4:
+                st.metric("Vector Dimensions", 1536)
+
+            with st.expander("📊 View Stored Vector Embeddings & Records", expanded=True):
+                filter_type = st.radio(
+                    "Filter by Document Chunk Type:",
+                    ["All", "resume", "job_description"],
+                    horizontal=True,
+                    key="vector_filter_radio",
+                )
+                filtered = (
+                    stored_vectors
+                    if filter_type == "All"
+                    else [v for v in stored_vectors if v["chunk_type"] == filter_type]
+                )
+
+                preview_rows = []
+                for v in filtered:
+                    emb = v.get("embedding")
+                    dim_count = 1536
+                    if isinstance(emb, str):
+                        try:
+                            parsed_emb = json.loads(emb)
+                            dim_count = len(parsed_emb)
+                            preview_emb = f"[{parsed_emb[0]:.4f}, {parsed_emb[1]:.4f}, {parsed_emb[2]:.4f}, ...]"
+                        except Exception:
+                            preview_emb = emb[:30] + "..."
+                    elif isinstance(emb, (list, tuple)):
+                        dim_count = len(emb)
+                        preview_emb = f"[{emb[0]:.4f}, {emb[1]:.4f}, {emb[2]:.4f}, ...]"
+                    else:
+                        preview_emb = str(emb)[:30] + "..."
+
+                    snippet = v["content"][:80] + "..." if len(v["content"]) > 80 else v["content"]
+                    preview_rows.append({
+                        "ID": v["id"],
+                        "Type": v["chunk_type"],
+                        "Chunk #": v["chunk_index"],
+                        "Dims": dim_count,
+                        "Vector Preview (Float Array)": preview_emb,
+                        "Chunk Text Snippet": snippet,
+                    })
+
+                st.dataframe(preview_rows, use_container_width=True)
+
+                st.markdown("##### 💻 How to query directly in PostgreSQL / pgAdmin / DBeaver / psql:")
+                st.code(
+                    f"-- Query vector embeddings for this evaluation:\n"
+                    f"SELECT id, evaluation_id, chunk_type, chunk_index,\n"
+                    f"       LEFT(content, 60) AS text_preview,\n"
+                    f"       LEFT(embedding::text, 50) AS vector_preview\n"
+                    f"FROM resume_embeddings\n"
+                    f"WHERE evaluation_id = '{curr_id}'\n"
+                    f"ORDER BY chunk_type, chunk_index;",
+                    language="sql",
+                )
+        else:
+            st.info("Run an ATS analysis above to generate and persist 1536-dimensional vector embeddings into the database.")
+
 
     # TAB 2: Suggestions Box
     with tab_suggestions:

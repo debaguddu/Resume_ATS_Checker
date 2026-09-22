@@ -135,3 +135,74 @@ def get_evaluation_by_id(evaluation_id: str) -> Optional[Dict[str, Any]]:
     except Exception as exc:
         logger.error("Failed to retrieve evaluation %s: %s", evaluation_id, exc)
         return None
+
+
+def save_resume_embeddings(evaluation_id: str, embedded_chunks: List[Dict[str, Any]]) -> bool:
+    """Save chunk texts and their 1536-dimensional embedding vectors into resume_embeddings table."""
+    try:
+        engine = get_engine()
+        sql = """
+        INSERT INTO resume_embeddings (evaluation_id, chunk_type, chunk_index, content, embedding)
+        VALUES (:evaluation_id, :chunk_type, :chunk_index, :content, :embedding);
+        """
+        with engine.connect() as conn:
+            for chunk in embedded_chunks:
+                emb_val = chunk["embedding"]
+                if isinstance(emb_val, (list, tuple)):
+                    emb_str = json.dumps(list(emb_val))
+                else:
+                    emb_str = str(emb_val)
+                conn.execute(
+                    text(sql),
+                    {
+                        "evaluation_id": evaluation_id,
+                        "chunk_type": chunk.get("chunk_type", "resume"),
+                        "chunk_index": int(chunk.get("chunk_index", 0)),
+                        "content": chunk.get("content", ""),
+                        "embedding": emb_str,
+                    },
+                )
+            conn.commit()
+            return True
+    except Exception as exc:
+        logger.error("Failed to save resume embeddings: %s", exc)
+        return False
+
+
+def get_embeddings_by_evaluation_id(evaluation_id: str) -> List[Dict[str, Any]]:
+    """Retrieve chunk texts, types, and vector metadata from resume_embeddings table for an evaluation."""
+    try:
+        engine = get_engine()
+        sql = """
+        SELECT id, evaluation_id, chunk_type, chunk_index, content,
+               embedding, created_at
+        FROM resume_embeddings
+        WHERE evaluation_id = :evaluation_id
+        ORDER BY chunk_type, chunk_index ASC;
+        """
+        with engine.connect() as conn:
+            result = conn.execute(text(sql), {"evaluation_id": evaluation_id}).mappings().all()
+            return [dict(row) for row in result]
+    except Exception as exc:
+        logger.warning("Failed to fetch embeddings for evaluation %s: %s", evaluation_id, exc)
+        return []
+
+
+def get_all_stored_embeddings(limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve recent stored vector embeddings across all evaluations."""
+    try:
+        engine = get_engine()
+        sql = """
+        SELECT id, evaluation_id, chunk_type, chunk_index, content,
+               embedding, created_at
+        FROM resume_embeddings
+        ORDER BY id DESC
+        LIMIT :limit;
+        """
+        with engine.connect() as conn:
+            result = conn.execute(text(sql), {"limit": limit}).mappings().all()
+            return [dict(row) for row in result]
+    except Exception as exc:
+        logger.warning("Failed to fetch stored embeddings: %s", exc)
+        return []
+

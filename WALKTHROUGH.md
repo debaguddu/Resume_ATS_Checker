@@ -193,10 +193,10 @@ Resume ATS Checker/
 - **Location**: [`src/resume_ats_checker/database/`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/database/)
 - **Modules**:
   - `connection.py`: `check_connection()`, `init_db()`, SQLAlchemy engine pool creation.
-  - `repository.py`: `save_evaluation()`, `get_evaluation_by_id()`, `get_recent_evaluations()`, `update_suggested_resume()`, `update_cover_letter()`, `save_resume_embeddings()`.
+  - `repository.py`: `save_evaluation()`, `get_evaluation_by_id()`, `get_recent_evaluations()`, `update_suggested_resume()`, `update_cover_letter()`, `save_resume_embeddings()`, `get_embeddings_by_evaluation_id()`, `get_all_stored_embeddings()`.
 - **Database Tables**:
   - `evaluations`: Primary evaluation records (scores, keywords, recommendations, outputs).
-  - `resume_embeddings`: Document chunks and vectors (`pgvector` or `JSONB`).
+  - `resume_embeddings`: Document chunks and vectors (1536-dimensional float arrays in `vector(1536)` or `JSONB`).
 
 ---
 
@@ -240,6 +240,7 @@ Resume ATS Checker/
 ### Feature 7: PostgreSQL Audit Logging & Vector Store
 - Automated audit trail saving scores, keywords, and generated documents.
 - Fallback vector storage supporting both native `pgvector` and standard `JSONB`.
+- **Interactive Vector DB Inspector**: An in-app inspector under Tab 1 ("🔍 Diagnostics & RAG Evidence") letting users explore all stored vectors, chunk previews, 1536-d float previews, and pre-formatted SQL queries.
 
 ---
 
