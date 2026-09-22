@@ -24,6 +24,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "numpy>=1.26.0",
     "reportlab>=5.0.1",
+    "tavily-python>=0.8.4",
 ]
 
 [project.scripts]

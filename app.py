@@ -66,6 +66,7 @@ with st.sidebar:
         """
         - **[🎯 ATS Checker & Matcher](ATS_Checker)**: Upload PDF/DOCX/PPTX, match against JD, view score, get suggestions, and rewrite.
         - **[📝 Resume Builder & Templates](Resume_Builder)**: Future-ready template studio with data & photo placeholders and export tools.
+        - **[💼 Job Match Finder](Job_Match_Finder)**: Discover live web jobs across LinkedIn, Indeed, Glassdoor via Tavily and rank by semantic ATS match.
         """
     )
     st.divider()
@@ -83,12 +84,19 @@ with col_left:
         3. **RAG Vector Analysis**: Semantic similarity matching across skills, responsibilities, and qualifications.
         4. **ATS Scorecard**: Detailed scoring on Skills (45%), Experience (40%), and ATS Readability (15%).
         5. **Suggested Resume & Cover Letter**: Generate and regenerate complete tailored assets with one click.
+        6. **Job Match Finder**: Scout top 100 live jobs across LinkedIn/Indeed using Tavily and rank against your resume.
         """
     )
 
     st.markdown(" ")
-    if st.button("🚀 Launch ATS Checker Workspace", type="primary", use_container_width=True):
-        st.switch_page("pages/1_🎯_ATS_Checker.py")
+    c_act1, c_act2 = st.columns(2)
+    with c_act1:
+        if st.button("🚀 Launch ATS Checker", type="primary", use_container_width=True):
+            st.switch_page("pages/1_🎯_ATS_Checker.py")
+    with c_act2:
+        if st.button("💼 Find Matching Jobs (Tavily)", type="secondary", use_container_width=True):
+            st.switch_page("pages/3_💼_Job_Match_Finder.py")
+
 
 with col_right:
     st.subheader("📋 Recent Audit History")

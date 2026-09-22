@@ -24,6 +24,12 @@ class Settings(BaseSettings):
         default_factory=lambda: os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
     )
 
+    # Tavily Web Search Configuration
+    tavily_api_key: Optional[str] = Field(
+        default_factory=lambda: os.getenv("TAVILY_API_KEY", "")
+    )
+
+
     # PostgreSQL Configuration
     postgres_host: str = Field(
         default_factory=lambda: os.getenv("POSTGRES_HOST", "localhost")

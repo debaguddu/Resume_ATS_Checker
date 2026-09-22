@@ -80,7 +80,8 @@ Resume ATS Checker/
 ├── app.py                                # Streamlit entrypoint, navigation & executive dashboard
 ├── pages/
 │   ├── 1_🎯_ATS_Checker.py              # Core ATS Checker & RAG analysis workspace
-│   └── 2_📝_Resume_Builder.py           # Interactive Accordion Resume Builder & export studio
+│   ├── 2_📝_Resume_Builder.py           # Interactive Accordion Resume Builder & export studio
+│   └── 3_💼_Job_Match_Finder.py         # Tavily RAG Job Scout & live multi-board searcher
 ├── src/
 │   └── resume_ats_checker/
 │       ├── config.py                    # Environment settings loaded via Pydantic
@@ -94,7 +95,8 @@ Resume ATS Checker/
 │       │   ├── chains.py                # LangChain ATS scoring chain with Pydantic output validation
 │       │   ├── rewrite_chain.py         # Full resume rewrite engine with 4 strategic angles
 │       │   ├── cover_letter_chain.py    # Persuasive, tailored cover letter generator
-│       │   └── builder_chain.py         # Resume decomposition & bullet generation into StructuredResume
+│       │   ├── builder_chain.py         # Resume decomposition & bullet generation into StructuredResume
+│       │   └── job_searcher.py          # Tavily multi-site job search & RAG semantic ranker
 │       ├── ui/
 │       │   ├── styles.py                # Glassmorphism dark mode CSS tokens & styling
 │       │   └── components.py            # Reusable UI cards, skill chips, and metric gauges
@@ -102,7 +104,9 @@ Resume ATS Checker/
 │           ├── __init__.py
 │           └── exporter.py              # Document exporter generating Word (.docx), PDF (.pdf), Text (.txt)
 ├── tests/
-│   └── test_suite.py                    # Automated verification test suite
+│   ├── test_suite.py                    # Comprehensive verification test suite
+│   ├── test_concurrency.py              # Multi-user concurrency & vector isolation test suite
+│   └── test_job_searcher.py             # Tavily search, RAG ranking & pagination test suite
 ├── README.md                            # Public overview, quickstart & setup guide
 ├── WALKTHROUGH.md                       # Complete technical specifications & living feature walkthrough
 └── AGENTS.md                            # Workspace synchronization rules
@@ -198,6 +202,16 @@ Resume ATS Checker/
   - `evaluations`: Primary evaluation records (scores, keywords, recommendations, outputs).
   - `resume_embeddings`: Document chunks and vectors (1536-dimensional float arrays in `vector(1536)` or `JSONB`).
 
+### I. Tavily Web Job Searcher & RAG Ranking Engine (`rag/job_searcher.py`)
+- **Location**: [`src/resume_ats_checker/rag/job_searcher.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/job_searcher.py)
+- **Functions**:
+  - `build_job_search_queries(job_title, years_exp, country, location) -> List[str]`: Generates targeted boolean query strings for LinkedIn, Indeed, Glassdoor, Greenhouse, Lever, and Wellfound.
+  - `search_jobs_with_tavily(job_title, years_exp, country, location, api_key, max_results=100) -> List[Dict[str, Any]]`: Queries Tavily AI Search for up to 100 live jobs across job portals, with curated active fallback.
+  - `rank_jobs_with_rag(resume_text, job_listings) -> List[Dict[str, Any]]`: Computes 1536-d semantic embeddings for candidate resume and job descriptions, calculating cosine similarity and sorting by match percentage.
+  - `paginate_jobs(jobs, page=1, page_size=20) -> Tuple[List[Dict[str, Any]], int]`: Slices job list into 20-job pages.
+  - `extract_company_from_title_or_url(title, url) -> str`: Heuristically parses company name from posting headers and domain names.
+- **Dependencies**: `tavily-python`, `langchain-openai`, `numpy`.
+
 ---
 
 ## 4. End-to-End Feature Walkthrough
@@ -247,6 +261,17 @@ Resume ATS Checker/
   - Full UUID4 global uniqueness across all evaluations.
   - Automated session state reset when switching resume files within the same browser session.
 
+### Feature 8: Tavily RAG Job Match Finder Workspace (`pages/3_💼_Job_Match_Finder.py`)
+- **Location**: [`pages/3_💼_Job_Match_Finder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/3_%F0%9F%92%BC_Job_Match_Finder.py)
+- **Workflow**:
+  1. **Candidate Preferences**: Users upload a resume (or reuse active resume from ATS Checker), input target job title, experience level, country, and location.
+  2. **Multi-Portal Web Scout**: Uses Tavily AI Web Search to scout up to 100 live active postings across LinkedIn, Indeed, Glassdoor, Wellfound, ZipRecruiter, Lever, and Greenhouse.
+  3. **RAG Semantic Ranking**: Generates vector embeddings using `text-embedding-3-small` and ranks all jobs by semantic match percentage against the candidate's achievements.
+  4. **20-Per-Page Pagination**: Clean pagination (e.g., Pages 1 to 5 for 100 jobs) with `[◀ Previous 20]` and `[Next 20 ▶]` controls.
+  5. **Direct Action Triggers**:
+     - `🔗 View & Apply on Site`: Direct verified external link opening the actual job board posting.
+     - `🎯 Analyze in ATS Checker`: 1-click handoff transferring the job specs into the ATS Checker for a deep audit scorecard.
+
 ---
 
 ## 5. Automated Verification & Test Suite
@@ -272,6 +297,7 @@ uv run python tests/test_concurrency.py
 | `test_builder_schema` | `builder_chain.py` | Validates Pydantic `StructuredResume` schema | `PASSED` |
 | `test_exporter` | `exporter.py` | Validates Word, PDF, and Text byte streams | `PASSED` |
 | `test_concurrent_isolation` | `repository.py` & `connection.py` | Simulates parallel evaluations, B-tree index & 0% cross-talk | `PASSED` |
+| `test_job_searcher` | `rag/job_searcher.py` | Validates multi-site query builder, Tavily fallback, RAG ranking & pagination | `PASSED` |
 
 
 ---

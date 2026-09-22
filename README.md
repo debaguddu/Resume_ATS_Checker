@@ -109,7 +109,8 @@ Resume ATS Checker/
 ├── app.py                            # Streamlit entrypoint & executive dashboard
 ├── pages/
 │   ├── 1_🎯_ATS_Checker.py           # Core ATS Checker & RAG Analyzer workspace
-│   └── 2_📝_Resume_Builder.py        # Future expansion template & export studio
+│   ├── 2_📝_Resume_Builder.py        # Future expansion template & export studio
+│   └── 3_💼_Job_Match_Finder.py      # Tavily RAG Job Scout & live multi-board searcher
 ├── src/
 │   └── resume_ats_checker/
 │       ├── __init__.py               # Package marker
@@ -127,7 +128,8 @@ Resume ATS Checker/
 │       │   ├── chains.py             # LangChain structured ATS scoring chain
 │       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
 │       │   ├── cover_letter_chain.py # Persuasive tailored cover letter generator
-│       │   └── builder_chain.py      # Structured resume decomposition & suggestion engine
+│       │   ├── builder_chain.py      # Structured resume decomposition & suggestion engine
+│       │   └── job_searcher.py       # Tavily multi-site job search & RAG semantic ranker
 │       ├── ui/
 │       │   ├── __init__.py
 │       │   ├── styles.py             # Glassmorphic CSS tokens, typography & color palettes
@@ -136,7 +138,9 @@ Resume ATS Checker/
 │           ├── __init__.py
 │           └── exporter.py           # Multi-format document exporter for Word (.docx), PDF (.pdf), Text (.txt)
 └── tests/
-    └── test_suite.py                 # Automated verification test suite
+    ├── test_suite.py                 # Core verification test suite
+    ├── test_concurrency.py           # Multi-user concurrency & vector isolation test suite
+    └── test_job_searcher.py          # Tavily search, RAG ranking & pagination test suite
 ```
 
 ---
@@ -599,6 +603,18 @@ erDiagram
 
 ---
 
+### 9.12 Tavily Web Job Searcher & RAG Ranking Engine: `rag/job_searcher.py`
+- **File**: [`src/resume_ats_checker/rag/job_searcher.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/job_searcher.py)
+- **Purpose**: Discovers live active job listings across top web portals (LinkedIn, Indeed, Glassdoor, Wellfound, ZipRecruiter, Lever, Greenhouse) via Tavily AI Search, and ranks each listing by semantic ATS alignment with the candidate's resume.
+- **Key Functions**:
+  - `build_job_search_queries(job_title, years_exp, country, location) -> List[str]`: Constructs targeted multi-platform boolean search queries.
+  - `search_jobs_with_tavily(job_title, years_exp, country, location, api_key, max_results=100) -> List[dict]`: Executes Tavily live search with deduplication and metadata extraction, including realistic curated fallback.
+  - `rank_jobs_with_rag(resume_text, job_listings) -> List[dict]`: Computes 1536-dimensional semantic embeddings with OpenAI `text-embedding-3-small`, evaluates cosine similarity against candidate resume, and sorts by match percentage.
+  - `paginate_jobs(jobs, page=1, page_size=20) -> (List[dict], int)`: Handles 20-job-per-page slicing across 5 pages for 100 listings.
+
+---
+
+
 ## 10. ⚙️ Environment Variables Reference
 
 | Variable Name | Required | Default Value | Description |
@@ -606,12 +622,14 @@ erDiagram
 | `OPENAI_API_KEY` | **Yes** | *None* | OpenAI API Key for embeddings and GPT-4o models. |
 | `OPENAI_MODEL` | No | `gpt-4o-mini` | Chat model used for scoring, rewriting, and cover letters. |
 | `EMBEDDING_MODEL` | No | `text-embedding-3-small` | Embedding model used for semantic RAG chunk vectorization. |
+| `TAVILY_API_KEY` | No | *None* | Tavily API Key for live multi-board web job searches. |
 | `POSTGRES_HOST` | No | `localhost` | Hostname of the PostgreSQL database instance. |
 | `POSTGRES_PORT` | No | `5432` | Port on which PostgreSQL is listening. |
 | `POSTGRES_DB` | No | `postgres` | Target database name. |
 | `POSTGRES_USER` | No | `postgres` | Database username. |
 | `POSTGRES_PASSWORD` | **Yes** | *None* | Database password. |
 | `DATABASE_URL` | No | *Computed* | Complete SQLAlchemy connection string (e.g. `postgresql+psycopg://...`). |
+
 
 ---
 
@@ -624,7 +642,11 @@ uv run python tests/test_suite.py
 
 # Multi-user concurrency & vector isolation test suite
 uv run python tests/test_concurrency.py
+
+# Tavily job searcher, RAG ranking & pagination test suite
+uv run python tests/test_job_searcher.py
 ```
+
 
 Expected output:
 ```text
