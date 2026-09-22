@@ -138,11 +138,44 @@ def test_builder_schema():
     print("  ✓ Resume Builder schema and default generation verified.")
 
 
+from resume_ats_checker.utils.exporter import (
+    generate_docx_from_structured_resume,
+    generate_pdf_from_structured_resume,
+    generate_txt_from_structured_resume,
+    generate_docx_from_markdown,
+    generate_pdf_from_markdown,
+)
+
+
+def test_exporter():
+    print("Testing Multi-Format Document Exporter (Word, PDF, Text)...")
+    sample = generate_default_sample_resume()
+    selections = {"include_summary": True, "exp_comp_0": True, "b_0_0": True, "edu_item_0": True}
+
+    docx_bytes = generate_docx_from_structured_resume(sample, selections)
+    assert len(docx_bytes) > 1000, "DOCX generation failed"
+
+    pdf_bytes = generate_pdf_from_structured_resume(sample, selections)
+    assert len(pdf_bytes) > 1000, "PDF generation failed"
+
+    txt_str = generate_txt_from_structured_resume(sample, selections)
+    assert len(txt_str) > 100, "TXT generation failed"
+
+    md_docx = generate_docx_from_markdown("# Sample\n\n- Bullet", "Test")
+    assert len(md_docx) > 500, "Markdown to DOCX failed"
+
+    md_pdf = generate_pdf_from_markdown("# Sample\n\n- Bullet", "Test")
+    assert len(md_pdf) > 500, "Markdown to PDF failed"
+
+    print("  ✓ Multi-format exporter (Word, PDF, Text) verified successfully.")
+
+
 if __name__ == "__main__":
     test_pdf_parsing()
     test_docx_parsing()
     test_pptx_parsing()
     test_database_integration()
     test_builder_schema()
+    test_exporter()
     print("\n🎉 ALL TESTS PASSED SUCCESSFULLY!")
 

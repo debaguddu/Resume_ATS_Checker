@@ -128,10 +128,13 @@ Resume ATS Checker/
 │       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
 │       │   ├── cover_letter_chain.py # Persuasive tailored cover letter generator
 │       │   └── builder_chain.py      # Structured resume decomposition & suggestion engine
-│       └── ui/
+│       ├── ui/
+│       │   ├── __init__.py
+│       │   ├── styles.py             # Glassmorphic CSS tokens, typography & color palettes
+│       │   └── components.py         # Reusable UI metric cards, chips & callouts
+│       └── utils/
 │           ├── __init__.py
-│           ├── styles.py             # Glassmorphic CSS tokens, typography & color palettes
-│           └── components.py         # Reusable UI metric cards, chips & callouts
+│           └── exporter.py           # Multi-format document exporter for Word (.docx), PDF (.pdf), Text (.txt)
 └── tests/
     └── test_suite.py                 # Automated verification test suite
 ```
@@ -150,7 +153,8 @@ Resume ATS Checker/
 | **Psycopg 3 (`psycopg[binary]`)** | `>= 3.2.0` | High-performance PostgreSQL database driver with binary wheels for Windows. |
 | **pgvector** | `>= 0.3.0` | Vector extension support for storing and indexing embeddings directly in PostgreSQL. |
 | **pypdf** | `>= 5.0.0` | Pure-Python PDF extraction library extracting clean text from multi-page resumes. |
-| **python-docx** | `>= 1.1.0` | Microsoft Word (`.docx`) document parser extracting paragraphs, headings, and tables. |
+| **python-docx** | `>= 1.1.0` | Microsoft Word (`.docx`) parser and generator producing professional DOCX resumes. |
+| **reportlab** | `>= 5.0.0` | High-precision PDF document engine producing publication-ready ATS PDF resumes. |
 | **python-pptx** | `>= 1.0.0` | PowerPoint (`.pptx`) parser extracting text from slides, shapes, tables, and notes. |
 | **Pydantic & Pydantic-Settings** | `>= 2.8.0` | Type-safe schema validation for structured LLM evaluation outputs and `.env` configuration. |
 | **NumPy** | `>= 1.26.0` | Vector operations and fast cosine similarity computations. |
@@ -576,7 +580,19 @@ erDiagram
     6. `> Skills & Interests` (Categorized skill sets).
     7. `> Certifications`, `> Projects`, `> Awards`, `> Leadership`, `> Publications`.
   - Supports both automatic context handoff from the ATS Checker and standalone reference resume upload / JD pasting.
-  - Real-time live compiled resume preview showing only checked accomplishments with Markdown (`.md`) and Plain Text (`.txt`) download buttons.
+  - Real-time live compiled resume preview showing only checked accomplishments with multi-format download buttons: **Word (`.docx`)**, **PDF (`.pdf`)**, **Plain Text (`.txt`)**, and **Markdown (`.md`)**.
+
+---
+
+### 9.11 Multi-Format Document Exporter: `utils/exporter.py`
+- **File**: [`src/resume_ats_checker/utils/exporter.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/utils/exporter.py)
+- **Purpose**: High-fidelity document generation compiling structured or Markdown resumes into ATS-compliant Word, PDF, and Plain Text files.
+- **Key Functions**:
+  - `generate_docx_from_structured_resume(resume, selections) -> bytes`: Builds an executive-styled Microsoft Word (`.docx`) document with standard 0.75-inch margins, bold company headings, italic roles/dates, and native bullet lists using `python-docx`.
+  - `generate_pdf_from_structured_resume(resume, selections) -> bytes`: Compiles a clean, publication-grade ATS PDF using `reportlab.platypus` with custom typography styles, divider rules, and clean line wrapping.
+  - `generate_txt_from_structured_resume(resume, selections) -> str`: Formats a clean ASCII plain text representation with standard dividers and bullet characters.
+  - `generate_docx_from_markdown(markdown_text, candidate_name) -> bytes`: Parses Markdown headers (`# `, `## `) and bullet lists (`- `, `• `) into structured Word formatting.
+  - `generate_pdf_from_markdown(markdown_text, candidate_name) -> bytes`: Renders Markdown content with ReportLab Platypus styles and horizontal rules into a high-precision PDF document.
 
 ---
 

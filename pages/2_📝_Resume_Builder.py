@@ -25,6 +25,11 @@ from resume_ats_checker.rag.builder_chain import (
     decompose_and_tailor_resume,
     generate_default_sample_resume,
 )
+from resume_ats_checker.utils.exporter import (
+    generate_docx_from_structured_resume,
+    generate_pdf_from_structured_resume,
+    generate_txt_from_structured_resume,
+)
 from resume_ats_checker.ui.styles import apply_custom_styles
 from resume_ats_checker.ui.components import render_header
 
@@ -453,21 +458,49 @@ with col_preview:
         unsafe_allow_html=True,
     )
 
-    st.markdown(" ")
-    # Download Actions
-    st.download_button(
-        label="⬇️ Download Tailored Resume (.md)",
-        data=compiled_text,
-        file_name=f"Custom_Resume_{resume.full_name.replace(' ', '_')}.md",
-        mime="text/markdown",
-        type="primary",
-        use_container_width=True,
-    )
+    st.markdown("### 📥 Download Customized Resume")
+    c_btn1, c_btn2, c_btn3 = st.columns(3)
 
+    # Word (.docx) Export
+    with c_btn1:
+        docx_data = generate_docx_from_structured_resume(resume, st.session_state["builder_selections"])
+        st.download_button(
+            label="📄 Word (.docx)",
+            data=docx_data,
+            file_name=f"Resume_{resume.full_name.replace(' ', '_')}.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            type="primary",
+            use_container_width=True,
+        )
+
+    # PDF (.pdf) Export
+    with c_btn2:
+        pdf_data = generate_pdf_from_structured_resume(resume, st.session_state["builder_selections"])
+        st.download_button(
+            label="📕 PDF (.pdf)",
+            data=pdf_data,
+            file_name=f"Resume_{resume.full_name.replace(' ', '_')}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+        )
+
+    # Plain Text (.txt) Export
+    with c_btn3:
+        txt_data = generate_txt_from_structured_resume(resume, st.session_state["builder_selections"])
+        st.download_button(
+            label="📝 Text (.txt)",
+            data=txt_data,
+            file_name=f"Resume_{resume.full_name.replace(' ', '_')}.txt",
+            mime="text/plain",
+            use_container_width=True,
+        )
+
+    # Markdown (.md) Export
     st.download_button(
-        label="📄 Download Plain Text (.txt)",
+        label="⬇️ Markdown (.md)",
         data=compiled_text,
-        file_name=f"Custom_Resume_{resume.full_name.replace(' ', '_')}.txt",
-        mime="text/plain",
+        file_name=f"Resume_{resume.full_name.replace(' ', '_')}.md",
+        mime="text/markdown",
         use_container_width=True,
     )

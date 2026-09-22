@@ -26,6 +26,10 @@ from resume_ats_checker.database.repository import (
     update_suggested_resume,
     update_cover_letter,
 )
+from resume_ats_checker.utils.exporter import (
+    generate_docx_from_markdown,
+    generate_pdf_from_markdown,
+)
 from resume_ats_checker.ui.styles import apply_custom_styles
 from resume_ats_checker.ui.components import (
     render_header,
@@ -296,16 +300,47 @@ if eval_res is not None:
                 f'<div class="document-preview-box">{current_suggested}</div>',
                 unsafe_allow_html=True,
             )
-            c_down1, c_down2 = st.columns([1, 1])
-            with c_down1:
+            st.markdown("##### 📥 Export Rewritten Resume:")
+            c_d1, c_d2, c_d3 = st.columns(3)
+            with c_d1:
+                docx_bytes = generate_docx_from_markdown(current_suggested, eval_res.candidate_name)
                 st.download_button(
-                    label="⬇️ Download Rewritten Resume (.md)",
+                    label="📄 Word (.docx)",
+                    data=docx_bytes,
+                    file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    type="primary",
+                    use_container_width=True,
+                )
+            with c_d2:
+                pdf_bytes = generate_pdf_from_markdown(current_suggested, eval_res.candidate_name)
+                st.download_button(
+                    label="📕 PDF (.pdf)",
+                    data=pdf_bytes,
+                    file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True,
+                )
+            with c_d3:
+                st.download_button(
+                    label="📝 Text (.txt)",
+                    data=current_suggested,
+                    file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                )
+
+            c_sub1, c_sub2 = st.columns([1, 1])
+            with c_sub1:
+                st.download_button(
+                    label="⬇️ Markdown (.md)",
                     data=current_suggested,
                     file_name=f"Rewritten_Resume_{eval_res.candidate_name.replace(' ', '_')}.md",
                     mime="text/markdown",
                     use_container_width=True,
                 )
-            with c_down2:
+            with c_sub2:
                 if st.button("🛠️ Open in Interactive Section Builder", use_container_width=True):
                     st.session_state["builder_resume_text"] = st.session_state.get("parsed_resume_text", "")
                     st.session_state["builder_jd_text"] = st.session_state.get("cached_jd", "")

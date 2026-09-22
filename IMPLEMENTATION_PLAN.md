@@ -62,10 +62,13 @@ Resume ATS Checker/
 │       │   ├── rewrite_chain.py      # Complete tailored resume rewrite & regeneration
 │       │   ├── cover_letter_chain.py # Persuasive tailored cover letter generator
 │       │   └── builder_chain.py      # Structured resume decomposition & suggestion engine
-│       └── ui/
+│       ├── ui/
+│       │   ├── __init__.py
+│       │   ├── styles.py             # Glassmorphic CSS tokens, typography, and dark palette
+│       └── components.py             # Reusable UI metric cards, chips, and callouts
+│       └── utils/
 │           ├── __init__.py
-│           ├── styles.py             # Glassmorphic CSS tokens, typography, and dark palette
-│           └── components.py         # Reusable UI metric cards, chips, and callouts
+│           └── exporter.py           # Multi-format resume exporter (Word .docx, PDF .pdf, Text .txt)
 └── tests/
     └── test_suite.py                 # Automated verification test suite
 ```
@@ -150,6 +153,13 @@ flowchart TD
 - **Modules**: `connection.py` (engine & table DDL), `repository.py` (CRUD helpers).
 - **Tables**: `evaluations`, `resume_embeddings`.
 
+### I. Multi-Format Document Exporter (`src/resume_ats_checker/utils/exporter.py`)
+- **Modules**: `exporter.py`
+- **Functions**: `generate_docx_from_structured_resume()`, `generate_pdf_from_structured_resume()`, `generate_txt_from_structured_resume()`, `generate_docx_from_markdown()`, `generate_pdf_from_markdown()`.
+- **Inputs**: `StructuredResume` object or Markdown string, selection dictionary, candidate name.
+- **Outputs**: Formatted `.docx` byte stream, publication-grade `.pdf` byte stream, clean `.txt` ASCII string.
+- **Dependencies**: `python-docx`, `reportlab`.
+
 ---
 
 ## 5. Verification & Test Plan
@@ -158,7 +168,9 @@ flowchart TD
    - Verified multi-format document parser using synthesized PDF, DOCX, and PPTX byte streams.
    - Verified PostgreSQL connection and table operations on port 5432.
    - Verified `StructuredResume` schema and default sample data generation in `tests/test_suite.py`.
+   - Verified multi-format document exporter generating Word (`.docx`), PDF (`.pdf`), and Text (`.txt`) streams without errors.
 2. **Syntax Validation**:
    - Verified zero compilation/syntax errors across all Python files.
 3. **Execution**:
    - Ran live Streamlit server on `http://localhost:8501` verifying healthy HTTP 200 response and multi-page routing.
+
