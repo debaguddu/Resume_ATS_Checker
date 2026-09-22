@@ -38,6 +38,7 @@ Resume ATS Checker/
 ├── .env.example                      # Committed sanitized template
 ├── pyproject.toml                    # UV project dependencies (Python >=3.11)
 ├── IMPLEMENTATION_PLAN.md            # Complete implementation plan & technical specs
+├── WALKTHROUGH.md                    # Living walkthrough & feature tracking document
 ├── README.md                         # Project documentation, diagrams & guides
 ├── AGENTS.md                         # Workspace rules for synchronization
 ├── app.py                            # Streamlit entrypoint & dashboard

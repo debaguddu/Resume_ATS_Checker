@@ -104,6 +104,7 @@ Resume ATS Checker/
 ├── pyproject.toml                    # UV project configuration and package dependencies
 ├── uv.lock                           # Pinned dependency lockfile
 ├── IMPLEMENTATION_PLAN.md            # Detailed technical specification & component blueprint
+├── WALKTHROUGH.md                    # Living walkthrough & feature tracking document
 ├── README.md                         # Complete project documentation, diagrams & guide
 ├── AGENTS.md                         # Workspace rule for design updates
 ├── app.py                            # Streamlit entrypoint & executive dashboard
