@@ -54,32 +54,16 @@ if "job_search_executed" not in st.session_state:
 # Sidebar Configuration
 with st.sidebar:
     st.header("⚙️ Search Configuration")
-    st.markdown("### 🌐 Tavily API Status")
-
-    tavily_env_key = settings.tavily_api_key
-    if tavily_env_key and len(tavily_env_key.strip()) > 5:
-        st.success("✅ Tavily API Key loaded from `.env`")
-        custom_tavily_key = st.text_input(
-            "Tavily Key Override (Optional)",
-            type="password",
-            value="",
-            help="Leave blank to use key from .env",
-        )
-        active_tavily_key = custom_tavily_key.strip() if custom_tavily_key.strip() else tavily_env_key
+    if settings.tavily_api_key and len(settings.tavily_api_key.strip()) > 5:
+        st.success("🟢 Tavily API: Connected (`.env`)")
     else:
-        st.warning("⚠️ `TAVILY_API_KEY` not detected in `.env`.")
-        custom_tavily_key = st.text_input(
-            "Enter Tavily API Key:",
-            type="password",
-            help="Enter your Tavily API key here to search live web job boards.",
-        )
-        active_tavily_key = custom_tavily_key.strip() if custom_tavily_key.strip() else ""
+        st.warning("🟡 Tavily API: Key not detected in `.env`")
 
-    st.caption("Don't have a key? Get one free at [tavily.com](https://tavily.com). (App includes curated live listings fallback if no key is entered).")
     st.divider()
     st.info("💡 **How It Works**: Tavily searches live postings across LinkedIn, Indeed, Glassdoor, Greenhouse, and Lever. OpenAI RAG embeddings then rank each job against your resume.")
 
 st.markdown("---")
+
 
 
 # Section 1: Candidate Inputs
@@ -173,9 +157,10 @@ if search_clicked:
                 years_exp=years_exp,
                 country=country,
                 location=location,
-                api_key=active_tavily_key,
+                api_key=settings.tavily_api_key,
                 max_results=100,
             )
+
 
         with st.spinner("🧠 Computing RAG semantic embeddings & ranking jobs against your resume..."):
             resume_text = st.session_state.get("parsed_resume_text", "")
