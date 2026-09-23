@@ -35,9 +35,13 @@ st.set_page_config(
 )
 
 apply_custom_styles()
-render_header()
+render_header(
+    title="💼 RAG Job Match Finder & Web Scout",
+    subtitle="Search top active job postings across LinkedIn, Indeed, Glassdoor, and Greenhouse using Tavily AI, then rank every listing by semantic ATS alignment with your resume.",
+)
 
 settings = get_settings()
+
 
 # Initialize session state for Job Match Finder
 if "discovered_jobs" not in st.session_state:
@@ -75,14 +79,8 @@ with st.sidebar:
     st.divider()
     st.info("💡 **How It Works**: Tavily searches live postings across LinkedIn, Indeed, Glassdoor, Greenhouse, and Lever. OpenAI RAG embeddings then rank each job against your resume.")
 
-
-st.markdown("## 💼 RAG Job Match Finder & Web Scout")
-st.markdown(
-    "Search top active job postings across **LinkedIn, Indeed, Glassdoor, Wellfound, ZipRecruiter, Lever, and Greenhouse** "
-    "using **Tavily AI Search**, then rank every listing by semantic ATS alignment with your specific resume."
-)
-
 st.markdown("---")
+
 
 # Section 1: Candidate Inputs
 col_res, col_search_params = st.columns([1, 1], gap="large")
