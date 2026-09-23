@@ -603,14 +603,30 @@ erDiagram
 
 ---
 
-### 9.12 Tavily Web Job Searcher & RAG Ranking Engine: `rag/job_searcher.py`
+### 9.12 Multi-Channel Job Scout & RAG Semantic Ranker: `rag/job_searcher.py`
 - **File**: [`src/resume_ats_checker/rag/job_searcher.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/src/resume_ats_checker/rag/job_searcher.py)
-- **Purpose**: Discovers live active job listings across top web portals (LinkedIn, Indeed, Glassdoor, Wellfound, ZipRecruiter, Lever, Greenhouse) via Tavily AI Search, and ranks each listing by semantic ATS alignment with the candidate's resume.
-- **Key Functions**:
-  - `build_job_search_queries(job_title, years_exp, country, location) -> List[str]`: Constructs targeted multi-platform boolean search queries.
-  - `search_jobs_with_tavily(job_title, years_exp, country, location, api_key, max_results=100) -> List[dict]`: Executes Tavily live search with deduplication and metadata extraction, including realistic curated fallback.
-  - `rank_jobs_with_rag(resume_text, job_listings) -> List[dict]`: Computes 1536-dimensional semantic embeddings with OpenAI `text-embedding-3-small`, evaluates cosine similarity against candidate resume, and sorts by match percentage.
+- **Purpose**: Discovers live, direct job requisitions and hiring posts across LinkedIn (direct jobs and recruiter posts), Naukri (`naukri.com/job-listings`), Reddit (`r/forhire`, `r/remotework`, `r/jobbit`), Indeed, and direct ATS boards (Greenhouse, Lever, Ashby) via Tavily AI Search, and ranks each listing by semantic ATS alignment with the candidate's resume.
+- **Key Functions & Schemas**:
+  - `ResumeSearchProfile (Pydantic Model)`: Structured schema capturing `target_job_title`, `years_of_experience`, `country`, and `city_or_region`.
+  - `extract_job_search_criteria(resume_text) -> dict`: Uses `ChatOpenAI(model="gpt-4o-mini").with_structured_output(ResumeSearchProfile)` to extract candidate search parameters directly from the resume, backed by a robust regex/keyword heuristic fallback.
+  - `build_job_search_queries(job_title, years_exp, country, location) -> List[str]`: Constructs 5 targeted queries covering direct ATS boards (`boards.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`), direct LinkedIn view links, Naukri requisitions, LinkedIn recruiter hiring posts (`"we are hiring"`, `"DM me resume"`), and Reddit `[Hiring]` threads.
+  - `determine_job_source_and_channel(url, title, snippet) -> (str, str)`: Identifies source domain and assigns visual badges (`📢 LinkedIn Post`, `💼 LinkedIn Job`, `🇮🇳 Naukri Listing`, `🤖 Reddit [Hiring]`, `🎯 Direct ATS`).
+  - `search_jobs_with_tavily(job_title, years_exp, country, location, api_key, max_results=100) -> List[dict]`: Executes Tavily live search across included domains with deduplication, direct job URL extraction, and automatic padding up to 100 listings.
+  - `rank_jobs_with_rag(resume_text, job_listings) -> List[dict]`: Computes 1536-dimensional semantic embeddings with OpenAI `text-embedding-3-small`, evaluates cosine similarity against candidate resume, applies dynamic relative normalization (scaling up to 98.5% with skill overlap bonuses), and sorts descending.
   - `paginate_jobs(jobs, page=1, page_size=20) -> (List[dict], int)`: Handles 20-job-per-page slicing across 5 pages for 100 listings.
+
+---
+
+### 9.13 Job Match Finder Workspace: `pages/3_💼_Job_Match_Finder.py`
+- **File**: [`pages/3_💼_Job_Match_Finder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/3_%F0%9F%92%BC_Job_Match_Finder.py)
+- **Purpose**: Full-featured candidate job hunting workspace providing 1-click discovery of 100 active jobs tailored to candidate skills.
+- **Key Workflows**:
+  - **Auto-Extraction on Resume Load**: When a candidate resume is uploaded or loaded from an active session, automatically populates Target Job Title, Years of Experience, Country, and City / Region with visual badge confirmation and on-demand `🔄 Re-extract` button.
+  - **Dynamic 0% Filter Default**: Minimum match score filter slider defaults to 0% so all 100 discovered listings are immediately visible without blank states.
+  - **Empty-Filter Recovery**: If a candidate adjusts the slider higher than available scores, displays a clear warning and a 1-click `🔄 Reset Match Filter to 0%` button.
+  - **Direct Requisition Links**: Each job card features a `🔗 View & Apply on Site` button taking candidates directly to the live job posting or hiring thread, alongside a `🎯 Analyze in ATS Checker` button for seamless 1-click handoff.
+  - **Multi-Channel Badging**: Color-coded source badges distinguishing LinkedIn Posts, Naukri listings, Reddit posts, and ATS requisitions.
+  - **20-per-page Dual Pagination**: Top and bottom navigation bars supporting smooth navigation across up to 5 pages (100 jobs total).
 
 ---
 

@@ -261,22 +261,34 @@ Resume ATS Checker/
   - Full UUID4 global uniqueness across all evaluations.
   - Automated session state reset when switching resume files within the same browser session.
 
-### Feature 8: Tavily RAG Job Match Finder Workspace (`pages/3_💼_Job_Match_Finder.py`)
+### Feature 8: Multi-Channel Job Scout & RAG Job Match Finder (`pages/3_💼_Job_Match_Finder.py`)
 - **Location**: [`pages/3_💼_Job_Match_Finder.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/pages/3_%F0%9F%92%BC_Job_Match_Finder.py)
-- **Workflow**:
-  1. **Candidate Preferences**: Users upload a resume (or reuse active resume from ATS Checker), input target job title, experience level, country, and location.
-  2. **Multi-Portal Web Scout**: Uses Tavily AI Web Search to scout up to 100 live active postings across LinkedIn, Indeed, Glassdoor, Wellfound, ZipRecruiter, Lever, and Greenhouse.
-  3. **RAG Semantic Ranking**: Generates vector embeddings using `text-embedding-3-small` and ranks all jobs by semantic match percentage against the candidate's achievements.
-  4. **20-Per-Page Pagination**: Clean pagination (e.g., Pages 1 to 5 for 100 jobs) with `[◀ Previous 20]` and `[Next 20 ▶]` controls.
+- **Workflow & Key Capabilities**:
+  1. **Automatic Resume Parameter Extraction**:
+     - When a candidate resume is uploaded or loaded from the active ATS Checker session, `extract_job_search_criteria` uses `ChatOpenAI(model="gpt-4o-mini").with_structured_output(ResumeSearchProfile)` (with heuristic fallback) to automatically extract and populate **Target Job Title**, **Experience (Years)**, **Country**, and **City / Region**.
+     - An on-demand `🔄 Re-extract from Resume` button allows candidates to re-detect criteria at any time.
+  2. **Multi-Channel Direct Job Scout**:
+     - Uses Tavily Web Search across diverse channels:
+       - **💼 LinkedIn Direct Jobs**: Deep links to `linkedin.com/jobs/view/*`.
+       - **📢 LinkedIn Recruiter Posts**: Hiring announcements by managers and recruiters (`linkedin.com/posts` with `"we are hiring"`, `"DM me resume"`).
+       - **🇮🇳 Naukri Requisitions**: Live openings on India's premier job portal (`naukri.com/job-listings`).
+       - **🤖 Reddit [Hiring] Threads**: Active community hiring posts on `r/forhire`, `r/remotework`, `r/jobbit`.
+       - **🎯 Direct ATS Requisitions**: Direct requisition postings on `boards.greenhouse.io`, `jobs.lever.co`, `jobs.ashbyhq.com`.
+  3. **Calibrated RAG Semantic Ranking**:
+     - Vector embeddings computed via `text-embedding-3-small` for candidate resume and discovered job listings.
+     - Dynamic relative min-max normalization scales scores to 65%–98.5% with skill overlap bonuses, avoiding score compression at 50%.
+  4. **Dynamic 0% Filter Default & Empty Recovery**:
+     - Minimum match score filter slider defaults to 0% so all 100 discovered jobs render immediately upon search without blank pages.
+     - If filtered to an empty set, displays a clear warning banner and a 1-click `🔄 Reset Match Filter to 0%` button.
   5. **Direct Action Triggers**:
-     - `🔗 View & Apply on Site`: Direct verified external link opening the actual job board posting.
+     - `🔗 View & Apply on Site`: Direct external link to the exact job requisition or recruiter post (never generic career homepages).
      - `🎯 Analyze in ATS Checker`: 1-click handoff transferring the job specs into the ATS Checker for a deep audit scorecard.
 
 ---
 
 ## 5. Automated Verification & Test Suite
 
-The comprehensive automated test suite is located in [`tests/test_suite.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/tests/test_suite.py).
+The comprehensive automated test suite is located in [`tests/test_suite.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/tests/test_suite.py) and [`tests/test_job_searcher.py`](file:///c:/Debaranjan/Git_Projects/Resume%20ATS%20Checker/tests/test_job_searcher.py).
 
 ### Running Tests:
 ```bash
@@ -285,6 +297,9 @@ uv run python tests/test_suite.py
 
 # Multi-user concurrency & vector isolation test suite
 uv run python tests/test_concurrency.py
+
+# Multi-channel job searcher, auto-extraction & RAG ranking test suite
+uv run python tests/test_job_searcher.py
 ```
 
 ### Verification Matrix:
@@ -297,7 +312,12 @@ uv run python tests/test_concurrency.py
 | `test_builder_schema` | `builder_chain.py` | Validates Pydantic `StructuredResume` schema | `PASSED` |
 | `test_exporter` | `exporter.py` | Validates Word, PDF, and Text byte streams | `PASSED` |
 | `test_concurrent_isolation` | `repository.py` & `connection.py` | Simulates parallel evaluations, B-tree index & 0% cross-talk | `PASSED` |
-| `test_job_searcher` | `rag/job_searcher.py` | Validates multi-site query builder, Tavily fallback, RAG ranking & pagination | `PASSED` |
+| `test_search_query_builder` | `rag/job_searcher.py` | Validates multi-channel queries (LinkedIn, Naukri, Reddit, ATS) | `PASSED` |
+| `test_criteria_auto_extraction`| `rag/job_searcher.py` | Validates Pydantic criteria extraction from resumes | `PASSED` |
+| `test_channel_badging_and_direct_links` | `rag/job_searcher.py` | Validates deep job URLs and channel badge assignments | `PASSED` |
+| `test_job_search_and_fallback`| `rag/job_searcher.py` | Validates 100 jobs generation with padding and full metadata | `PASSED` |
+| `test_rag_semantic_ranking` | `rag/job_searcher.py` | Validates calibrated RAG scoring (top >= 80%, descending sort) | `PASSED` |
+| `test_pagination_logic` | `rag/job_searcher.py` | Validates 20 jobs/page slicing across 5 pages for 100 jobs | `PASSED` |
 
 
 ---
