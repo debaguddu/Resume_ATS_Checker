@@ -249,7 +249,6 @@ if all_jobs:
             "Filter by Minimum Match Score (%):",
             min_value=0,
             max_value=95,
-            value=int(st.session_state.get("job_min_score_filter", 0)),
             step=5,
             key="job_min_score_filter",
         )
